@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Économies solaires</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62; --tarif:#a5b4fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:ui-monospace,Consolas,"Segoe UI Mono",monospace;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;
+  overflow-y:auto;scrollbar-width:thin;padding:20px;gap:20px}
+
+#hdr .t{font-size:clamp(15px,2.2vh,19px);letter-spacing:.18em;color:var(--okl);font-weight:800}
+#hdr .s{font-size:13px;color:var(--dim);letter-spacing:.12em;margin-top:4px}
+
+#main{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+#main .l{font-size:clamp(14px,2vh,18px);letter-spacing:.2em;font-weight:800}
+#main .big{font-size:clamp(52px,10vh,84px);font-weight:800;color:var(--okl);line-height:1}
+#main .big small{font-size:.4em;color:var(--ok)}
+#main .sub{font-size:15px;color:var(--dim);letter-spacing:.08em}
+#main .sub b{color:var(--okl)} #main .sub b.neg{color:var(--bad)}
+
+#objw{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:6px}
+#obar{height:14px;border-radius:7px;background:var(--card2);overflow:hidden}
+#obar div{height:100%;width:0%;border-radius:7px;background:linear-gradient(90deg,var(--ok),var(--okl));transition:width .7s}
+#olbl{display:flex;justify-content:space-between;font-size:13px;color:var(--dim)}
+#opct{font-size:14px;font-weight:800;color:var(--okl);letter-spacing:.08em}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+.tl{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.tl .l{font-size:13px;color:var(--dim);letter-spacing:.16em;font-weight:700}
+.tl .v{font-size:clamp(28px,4.5vh,36px);font-weight:800;margin-top:8px}
+.tl .v small{font-size:15px;color:var(--dim)}
+
+#net{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#net .l{font-size:14px;letter-spacing:.16em;font-weight:800;color:var(--dim)}
+#net .v{font-size:30px;font-weight:800}
+#net .v small{font-size:15px;color:var(--dim)}
+#foot{display:flex;justify-content:space-between;font-size:12px;color:var(--dim2);letter-spacing:.12em}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <div class="t">DIVISION ÉNERGIE — COMPTE ÉPARGNE PHOTOVOLTAÏQUE</div>
+    <div class="s">3 INSTALLATIONS BEEM · TARIF BASE 9 kVA TTC</div>
+  </div>
+
+  <div id="main">
+    <div class="l">ÉCONOMIES RÉALISÉES — CUMUL ANNUEL</div>
+    <div class="big"><span id="tot">--</span> <small>€</small></div>
+    <div class="sub"><b id="mo">--</b> CE MOIS · OBJECTIF : <span id="obj">300</span> €/AN</div>
+    <div id="objw">
+      <div id="obar"><div id="obar-f"></div></div>
+      <div id="olbl"><span>0 €</span><span id="opct">--% DE L'OBJECTIF ATTEINT</span><span id="omax">300 €</span></div>
+    </div>
+  </div>
+
+  <div class="tiles">
+    <div class="tl"><div class="l">GAIN / JOUR</div>
+      <div class="v" id="day" style="color:var(--okl)">-- <small>€</small></div></div>
+    <div class="tl"><div class="l">GAIN / MOIS</div>
+      <div class="v" id="month" style="color:var(--okl)">-- <small>€</small></div></div>
+    <div class="tl"><div class="l">TARIF EDF</div>
+      <div class="v" style="color:var(--tarif)"><span id="tarif">--</span> <small>€/kWh</small></div></div>
+  </div>
+
+  <div id="net">
+    <span class="l">GAIN NET ANNUEL</span>
+    <span class="v" id="net-v">-- <small>€</small></span>
+  </div>
+
+  <div id="foot"><span>DIVISION ÉNERGIE RENOUVELABLE</span><span>SAINTE-CROIX-EN-PLAINE</span></div>
+</div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  TOT:'sensor.economies_solaires_totale_annee',
+  DAY:'sensor.gain_solaire_jour',
+  MONTH:'sensor.gain_solaire_mensuel_reel',
+  NET:'sensor.gain_solaire_net_annuel',
+  TARIF:'sensor.tarif_actuel_base_9kva_ttc',
+  TARGET:300
+};
+
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const fr=(v,d)=>v==null?'--':v.toFixed(d).replace('.',',');
+
+function signed(el,v,d){
+  el.innerHTML=(v==null?'--':(v>0?'+':'')+fr(v,d))+' <small>€</small>';
+  el.style.color=v==null?'var(--dim2)':v>=0?'var(--okl)':'var(--bad)';
+}
+
+function render(){
+  const tot=num(CFG.TOT), day=num(CFG.DAY), mo=num(CFG.MONTH), net=num(CFG.NET), tarif=num(CFG.TARIF);
+
+  gid('tot').textContent=fr(tot,2);
+  const moEl=gid('mo');
+  moEl.textContent=mo==null?'--':(mo>=0?'↑ +':'↓ ')+fr(mo,2)+' €';
+  moEl.className=mo!=null&&mo<0?'neg':'';
+
+  const pct=tot==null?null:Math.max(0,tot/CFG.TARGET*100);
+  gid('obar-f').style.width=Math.min(100,pct||0)+'%';
+  gid('opct').textContent=(pct==null?'--':Math.round(pct))+"% DE L'OBJECTIF ATTEINT";
+  gid('obj').textContent=CFG.TARGET; gid('omax').textContent=CFG.TARGET+' €';
+
+  signed(gid('day'),day,2);
+  signed(gid('month'),mo,2);
+  gid('tarif').textContent=fr(tarif,3);
+  signed(gid('net-v'),net,2);
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

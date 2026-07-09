@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serveur</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --warn:#f0b429; --bad:#ff6b62;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column}
+
+#bar{display:flex;align-items:center;gap:14px;padding:12px 18px;
+  background:var(--card);border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap}
+#nm{font-size:20px;font-weight:800;letter-spacing:.05em}
+#os{font-size:14px;color:var(--dim)}
+.badge{display:flex;align-items:center;gap:8px;border:1px solid var(--line);
+  border-radius:20px;padding:7px 14px;font-size:14px;font-weight:800;color:var(--dim)}
+.badge.on{border-color:rgba(63,174,100,.55);color:var(--ok);background:rgba(63,174,100,.1)}
+.badge.off{border-color:rgba(255,107,98,.55);color:var(--bad);background:rgba(255,107,98,.1)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--dim2)}
+.badge.on .dot{background:var(--ok);box-shadow:0 0 8px rgba(63,174,100,.7)}
+.badge.off .dot{background:var(--bad);box-shadow:0 0 8px rgba(255,107,98,.7)}
+#clk{margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:17px;color:var(--dim)}
+
+#body{flex:1;overflow-y:auto;scrollbar-width:thin;padding:18px;display:flex;flex-direction:column;gap:18px}
+#gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.g{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:16px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.g svg{width:min(160px,40vw);height:auto}
+.g .lbl{font-size:15px;font-weight:700;letter-spacing:.1em;color:var(--dim)}
+.arcbg{fill:none;stroke:var(--card2);stroke-width:14;stroke-linecap:round}
+.arcv{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .6s ease,stroke .4s}
+.gv{font-size:32px;font-weight:800;font-family:ui-monospace,Consolas,monospace;fill:var(--txt)}
+.gu{font-size:13px;fill:var(--dim)}
+
+#disks{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:14px}
+#disks h2{font-size:14px;font-weight:800;letter-spacing:.14em;color:var(--accent2)}
+.dk .row{display:flex;justify-content:space-between;font-size:15px;margin-bottom:6px}
+.dk .row b{font-family:ui-monospace,Consolas,monospace;font-size:17px}
+.bar{height:14px;background:var(--card2);border-radius:7px;overflow:hidden}
+.fill{height:100%;width:0%;border-radius:7px;background:var(--accent);transition:width .6s ease,background .4s}
+
+#actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn{font-size:16px;font-weight:800;font-family:inherit;border-radius:12px;cursor:pointer;
+  padding:16px 22px;min-height:58px;border:2px solid var(--line);background:var(--card);color:var(--txt)}
+.btn:hover{border-color:var(--accent);color:var(--accent2)}
+.btn.danger{border-color:rgba(255,107,98,.5);color:var(--bad)}
+.btn.danger:hover{background:rgba(255,107,98,.1)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  background:#0f1724;border:2px solid var(--accent);color:#fff;font-size:15px;font-weight:700;
+  padding:12px 20px;border-radius:10px;display:none;z-index:10}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <div>
+      <div id="nm">SERVEUR</div>
+      <div id="os"></div>
+    </div>
+    <div class="badge" id="stbadge"><span class="dot"></span><span id="sttxt">…</span></div>
+    <span id="clk">--:--:--</span>
+  </div>
+  <div id="body">
+    <div id="gauges"></div>
+    <div id="disks"><h2>DISQUES</h2><div id="dk-list" style="display:flex;flex-direction:column;gap:14px"></div></div>
+    <div id="actions"></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  SERVERS:{
+    haos:{
+      name:'SERVEUR HAOS', os:'Home Assistant OS · Proxmox VE · NiPoGi N150',
+      cpu:'sensor.homeassistant_utilisation_du_processeur',
+      ram:'sensor.homeassistant_pourcentage_d_utilisation_de_la_memoire',
+      proc:null,
+      status:{e:'binary_sensor.homeassistant_statut', on:'on', onTxt:'EN LIGNE', offTxt:'HORS LIGNE'},
+      disks:[
+        {l:'Utilisation HDD (HAOS)',      e:'sensor.homeassistant_utilisation_du_disque',           mode:'used'},
+        {l:'Utilisation max. HDD (HAOS)', e:'sensor.homeassistant_utilisation_maximale_du_disque',  mode:'used'},
+        {l:'Stockage Proxmox (local-lvm)',e:'sensor.salon_storage_local_lvm_pourcentage_d_utilisation_du_stockage', mode:'used'}
+      ],
+      actions:[
+        {label:'⟳ REDÉMARRER HOME ASSISTANT', e:'button.homeassistant_redemarrer',
+         domain:'button', service:'press', danger:true,
+         confirm:'Redémarrer Home Assistant maintenant ?\nLe portail sera indisponible ~1 minute.'}
+      ]
+    },
+    windows:{
+      name:'WINDOWS SERVER 2022', os:'Windows Server Datacenter 2022',
+      cpu:'sensor.windows_cpu_utilise',
+      ram:'sensor.windows_ram_utilisee',
+      proc:'sensor.windows_processus',
+      status:{e:'switch.prise_serveur_windows', on:'on', onTxt:'ALIMENTÉ', offTxt:'COUPÉ'},
+      disks:[
+        {l:'C: Système (libre)',  e:'sensor.windows_disque_c_libre', mode:'free'},
+        {l:'D: Données (libre)',  e:'sensor.windows_disque_d_libre', mode:'free'},
+        {l:'E: Backup (libre)',   e:'sensor.windows_disque_e_libre', mode:'free'},
+        {l:'F: Stockage (libre)', e:'sensor.windows_disque_f_libre', mode:'free'}
+      ],
+      actions:[
+        {label:'⏻ PRISE SERVEUR ON/OFF', e:'switch.prise_serveur_windows',
+         domain:'switch', service:'toggle', danger:true,
+         confirm:"Basculer la prise du serveur Windows ?\n⚠ Une coupure brutale peut endommager le système — assure-toi qu'il est arrêté proprement avant de couper."}
+      ]
+    }
+  }
+};
+
+const q=new URLSearchParams(location.search);
+const SRV=CFG.SERVERS[q.get('srv')||'haos']||CFG.SERVERS.haos;
+const gid=id=>document.getElementById(id);
+gid('nm').textContent=SRV.name; gid('os').textContent=SRV.os;
+document.title='Serveur — '+SRV.name;
+
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+
+/* ── Jauges ── */
+const GA=[{k:'cpu',l:'CPU',u:'%'},{k:'ram',l:'RAM',u:'%'},{k:'proc',l:'PROCESSUS',u:''}].filter(g=>SRV[g.k]);
+const R=62, CIRC=Math.PI*R*1.5; /* arc 270° */
+function gaugeSvg(i){
+  return `<svg viewBox="0 0 160 150">
+    <path class="arcbg" d="M 27.3 132.7 A 62 62 0 1 1 132.7 132.7"/>
+    <path class="arcv" id="ga-${i}" d="M 27.3 132.7 A 62 62 0 1 1 132.7 132.7"
+      stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"/>
+    <text class="gv" id="gv-${i}" x="80" y="86" text-anchor="middle">--</text>
+    <text class="gu" id="gu-${i}" x="80" y="106" text-anchor="middle"></text>
+  </svg>`;
+}
+gid('gauges').innerHTML=GA.map((g,i)=>`<div class="g">${gaugeSvg(i)}<div class="lbl">${g.l}</div></div>`).join('');
+
+function colFor(p){return p==null?'var(--dim2)':p>=85?'var(--bad)':p>=65?'var(--warn)':'var(--accent)';}
+function updGauges(){
+  GA.forEach((g,i)=>{
+    const v=num(SRV[g.k]);
+    const isPct=g.u==='%';
+    const p=isPct?Math.max(0,Math.min(100,v??0)):null;
+    const arc=gid('ga-'+i);
+    if(isPct){ arc.style.strokeDashoffset=CIRC*(1-(v==null?0:p/100)); arc.style.stroke=colFor(v==null?null:p); }
+    else{ arc.style.strokeDashoffset=CIRC*0.25; arc.style.stroke='var(--accent)'; }
+    gid('gv-'+i).textContent=v==null?'--':(isPct?v.toFixed(0):Math.round(v));
+    gid('gu-'+i).textContent=isPct?'%':'';
+  });
+}
+
+/* ── Disques ── */
+gid('dk-list').innerHTML=SRV.disks.map((d,i)=>`
+  <div class="dk">
+    <div class="row"><span>${d.l}</span><b id="dv-${i}">--&nbsp;%</b></div>
+    <div class="bar"><div class="fill" id="df-${i}"></div></div>
+  </div>`).join('');
+function diskCol(mode,p){
+  if(p==null)return 'var(--dim2)';
+  if(mode==='free') return p<15?'var(--bad)':p<35?'var(--warn)':'var(--ok)';
+  return p>=85?'var(--bad)':p>=65?'var(--warn)':'var(--accent)';
+}
+function updDisks(){
+  SRV.disks.forEach((d,i)=>{
+    const v=num(d.e), p=v==null?null:Math.max(0,Math.min(100,v));
+    gid('dv-'+i).innerHTML=(v==null?'--':v.toFixed(1))+'&nbsp;%';
+    const f=gid('df-'+i);
+    f.style.width=(p??0)+'%'; f.style.background=diskCol(d.mode,p);
+  });
+}
+
+/* ── Statut + actions ── */
+function updStatus(){
+  const st=HA[SRV.status.e];
+  const on=st&&st.state===SRV.status.on;
+  gid('stbadge').className='badge '+(st?(on?'on':'off'):'');
+  gid('sttxt').textContent=st?(on?SRV.status.onTxt:SRV.status.offTxt):'…';
+}
+gid('actions').innerHTML=SRV.actions.map((a,i)=>
+  `<button class="btn${a.danger?' danger':''}" onclick="doAction(${i})">${a.label}</button>`).join('');
+function toast(t){const e=gid('toast');e.textContent=t;e.style.display='block';
+  clearTimeout(e._h);e._h=setTimeout(()=>e.style.display='none',2500);}
+function doAction(i){
+  const a=SRV.actions[i];
+  if(a.confirm&&!confirm(a.confirm))return;
+  if(!ws||ws.readyState!==1){toast('Non connecté');return;}
+  ws.send(JSON.stringify({id:msgId++,type:'call_service',domain:a.domain,service:a.service,
+    service_data:{entity_id:a.e}}));
+  toast('Commande envoyée ✔');
+}
+
+/* ── WebSocket ── */
+function renderAll(){updGauges();updDisks();updStatus();}
+function connectWS(){
+  ws=new WebSocket(CFG.HA_URL.replace('http','ws')+'/api/websocket');
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); renderAll();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state;
+      if(s){HA[s.entity_id]=s; renderAll();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+setInterval(()=>{const n=new Date();
+  gid('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');},1000);
+renderAll(); connectWS();
+</script>
+</body>
+</html>

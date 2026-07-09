@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Records de température</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --line:#3c4a5e; --txt:#eef3fa; --dim:#aebdd0; --dim2:#55677f;
+  --hot:#ff6b62; --cold:#4da3ff; --warm:#f0b429; --cool:#7cc0ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+.grid{
+  width:100%;height:100vh;height:100dvh;padding:16px;
+  display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:14px;
+  overflow-y:auto;scrollbar-width:thin;
+}
+.tile{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;padding:18px 14px;text-align:center;position:relative;overflow:hidden;
+}
+.tile::after{content:'';position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  width:120px;height:3px;border-radius:2px;background:var(--ac);opacity:.85}
+.tile.hot{--ac:var(--hot)} .tile.cold{--ac:var(--cold)}
+.tile.warm{--ac:var(--warm)} .tile.cool{--ac:var(--cool)}
+.ico{width:46px;height:46px;color:var(--ac);flex-shrink:0}
+.lbl{font-size:16px;font-weight:700;letter-spacing:.14em;color:var(--ac);text-transform:uppercase}
+.val{font-size:clamp(34px,5.5vh,52px);font-weight:800;font-family:ui-monospace,Consolas,monospace;color:var(--ac);line-height:1.1}
+.val small{font-size:.45em;font-weight:600;color:var(--dim)}
+.date{font-size:15px;color:var(--txt);font-family:ui-monospace,Consolas,monospace}
+.comp{font-size:14px;color:var(--dim)}
+@media (max-width:640px){
+  .grid{grid-template-columns:1fr;grid-auto-rows:minmax(170px,auto)}
+  .val{font-size:38px}
+}
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="tile hot">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M15 13V5a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0m-3-9a1 1 0 0 1 1 1v7.54a3 3 0 1 1-2 0V5a1 1 0 0 1 1-1Z"/><rect x="11" y="6" width="2" height="9" rx="1"/></svg>
+    <div class="lbl">Pic annuel</div>
+    <div class="val"><span id="v-maxa">--</span><small> °C</small></div>
+    <div class="date" id="d-maxa">le --/--/---- --:--</div>
+    <div class="comp" id="c-chaud">&nbsp;</div>
+  </div>
+
+  <div class="tile cold">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M15 13V5a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0m-3-9a1 1 0 0 1 1 1v7.54a3 3 0 1 1-2 0V5a1 1 0 0 1 1-1Z"/><rect x="11" y="10" width="2" height="5" rx="1"/></svg>
+    <div class="lbl">Creux annuel</div>
+    <div class="val"><span id="v-mina">--</span><small> °C</small></div>
+    <div class="date" id="d-mina">le --/--/---- --:--</div>
+    <div class="comp" id="c-froid">&nbsp;</div>
+  </div>
+
+  <div class="tile warm">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M15 13V5a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0m-3-9a1 1 0 0 1 1 1v7.54a3 3 0 1 1-2 0V5a1 1 0 0 1 1-1Z"/><rect x="11" y="7" width="2" height="8" rx="1"/></svg>
+    <div class="lbl">Pic du mois</div>
+    <div class="val"><span id="v-maxm">--</span><small> °C</small></div>
+    <div class="date" id="d-maxm">le --/--/---- --:--</div>
+  </div>
+
+  <div class="tile cool">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M15 13V5a3 3 0 0 0-6 0v8a5 5 0 1 0 6 0m-3-9a1 1 0 0 1 1 1v7.54a3 3 0 1 1-2 0V5a1 1 0 0 1 1-1Z"/><rect x="11" y="11" width="2" height="4" rx="1"/></svg>
+    <div class="lbl">Creux du mois</div>
+    <div class="val"><span id="v-minm">--</span><small> °C</small></div>
+    <div class="date" id="d-minm">le --/--/---- --:--</div>
+  </div>
+
+  <div class="tile cool">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 16H5V10h14ZM5 8V6h14v2Zm7 4a4 4 0 1 0 4 4 4 4 0 0 0-4-4m1.5 5.5-2-1.15V14h1v1.77l1.5.87Z"/></svg>
+    <div class="lbl">Sans record froid</div>
+    <div class="val"><span id="v-jf">--</span><small> jours</small></div>
+  </div>
+
+  <div class="tile hot">
+    <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 16H5V10h14ZM5 8V6h14v2Zm7 4a4 4 0 1 0 4 4 4 4 0 0 0-4-4m1.5 5.5-2-1.15V14h1v1.77l1.5.87Z"/></svg>
+    <div class="lbl">Sans record chaud</div>
+    <div class="val"><span id="v-jc">--</span><small> jours</small></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const CFG = {
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  E:{
+    maxa:'input_number.temp_max_annee',   d_maxa:'input_datetime.date_temp_max_annuelle', c_chaud:'sensor.comparaison_record_chaud',
+    mina:'input_number.temp_min_annee',   d_mina:'input_datetime.date_temp_min_annuelle', c_froid:'sensor.comparaison_record_froid',
+    maxm:'input_number.temp_max_mois',    d_maxm:'input_datetime.date_temp_max_mois',
+    minm:'input_number.temp_min_mois',    d_minm:'input_datetime.date_temp_min_mois',
+    jf:'sensor.jours_depuis_dernier_record_froid',
+    jc:'sensor.jours_depuis_dernier_record_chaud'
+  }
+};
+const gid=id=>document.getElementById(id);
+const IDX={}; Object.entries(CFG.E).forEach(([k,e])=>IDX[e]=k);
+
+function fmtNum(st,dec){const v=parseFloat(st);return isNaN(v)?'--':v.toFixed(dec);}
+function fmtDate(st){
+  if(!st||st==='unknown'||st==='unavailable') return 'le --/--/---- --:--';
+  const m=String(st).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if(!m) return 'le '+st;
+  return 'le '+m[3]+'/'+m[2]+'/'+m[1]+' '+m[4]+':'+m[5];
+}
+
+function apply(st){
+  if(!st||!st.entity_id) return;
+  const k=IDX[st.entity_id]; if(!k) return;
+  const s=st.state;
+  switch(k){
+    case 'maxa': gid('v-maxa').textContent=fmtNum(s,1); break;
+    case 'mina': gid('v-mina').textContent=fmtNum(s,1); break;
+    case 'maxm': gid('v-maxm').textContent=fmtNum(s,1); break;
+    case 'minm': gid('v-minm').textContent=fmtNum(s,1); break;
+    case 'd_maxa': gid('d-maxa').textContent=fmtDate(s); break;
+    case 'd_mina': gid('d-mina').textContent=fmtDate(s); break;
+    case 'd_maxm': gid('d-maxm').textContent=fmtDate(s); break;
+    case 'd_minm': gid('d-minm').textContent=fmtDate(s); break;
+    case 'c_chaud': gid('c-chaud').textContent=(s&&s!=='unknown'&&s!=='unavailable')?s:'\u00a0'; break;
+    case 'c_froid': gid('c-froid').textContent=(s&&s!=='unknown'&&s!=='unavailable')?s:'\u00a0'; break;
+    case 'jf': gid('v-jf').textContent=fmtNum(s,0); break;
+    case 'jc': gid('v-jc').textContent=fmtNum(s,0); break;
+  }
+}
+
+let ws=null;
+function connectWS(){
+  ws=new WebSocket(CFG.HA_URL.replace('http','ws')+'/api/websocket');
+  let id=1;
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:id++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:id++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)) m.result.forEach(apply);
+    else if(m.type==='event'&&m.event?.event_type==='state_changed') apply(m.event.data.new_state);
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+connectWS();
+</script>
+</body>
+</html>

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>Plaque Induction RPD V4</title>
+
+  <style>
+
+    :root {
+
+      /* Couleurs de Fond (Fidèles à ton interface Portail) */
+
+      --bg: #1c2331;       /* Fond principal de la page (Slate Blue) */
+
+      --panel: #232a3b;    /* Fond des cartes et panneaux */
+
+      --border: #2d364d;   /* Bordures et séparations discrètes */
+
+      --dim2: #181f2c;     /* Fond sombre à l'intérieur des jauges/barres */
+
+      --glass: #141a24;    /* Fond ultra sombre effet vitrocéramique */
+
+      /* Couleurs de Texte */
+
+      --txt: #ffffff;      /* Blanc pur pour titres et valeurs fortes */
+
+      --dim: #9aa5b7;      /* Gris-bleu pour les labels et sous-titres */
+
+      /* Palette d'Accents (Fidèle à tes jauges CPU/RAM/Disques) */
+
+      --accent: #5e94ff;   /* Bleu vif */
+
+      --green: #3b7a57;    /* Vert soft */
+
+      --amber: #fbc02d;    /* Jaune/Ambre chaud */
+
+      --red: #f37b67;      /* Rouge saumon/corail */
+
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+
+    
+
+    html, body { 
+
+      background: var(--bg) !important; 
+
+      color: var(--txt); 
+
+      width: 100%; 
+
+      height: 100%; 
+
+      overflow: hidden; /* Bloque définitivement tout scroll complet */
+
+    }
+
+    .dash { 
+
+      width: 100%; 
+
+      height: 100vh; 
+
+      max-height: 100vh;
+
+      background: var(--bg); 
+
+      padding: 12px; 
+
+      display: flex; 
+
+      flex-direction: column; 
+
+      gap: 10px; 
+
+      overflow: hidden;
+
+    }
+
+    .hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0; }
+
+    .title-grp { display: flex; align-items: center; gap: 8px; }
+
+    h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+
+    .sub { font-size: 11px; color: var(--dim); margin-top: 1px; }
+
+    
+
+    .st-badge { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
+
+    .st-badge.on { border-color: rgba(243,123,103,0.4); color: var(--red); background: rgba(243,123,103,0.1); }
+
+    .st-badge.off { border-color: var(--border); color: var(--dim); background: none; }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    .dot.r { background: var(--red); box-shadow: 0 0 6px var(--red); animation: pd 1.5s infinite ease-in-out; }
+
+    .dot.o { background: var(--border); }
+
+    @keyframes pd { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .clk { font-family: monospace; font-size: 14px; color: var(--dim); }
+
+    .main-grid { display: grid; grid-template-columns: 260px 1fr; gap: 12px; flex: 1; min-height: 0; }
+
+    .left-col { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+
+    
+
+    .mach-wrap { 
+
+      flex: 1; 
+
+      border: 1px solid var(--border); 
+
+      border-radius: 8px; 
+
+      background: var(--glass); 
+
+      display: flex; 
+
+      justify-content: center; 
+
+      align-items: center; 
+
+      padding: 8px; 
+
+      position: relative; 
+
+      overflow: hidden; 
+
+      min-height: 0;
+
+    }
+
+    .mach-wrap svg { width: auto; height: 100%; max-height: 100%; max-width: 100%; }
+
+    .legend { font-size: 10px; color: var(--dim); text-align: center; flex-shrink: 0; }
+
+    .right-col { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; flex-shrink: 0; }
+
+    
+
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; gap: 2px; position: relative; overflow: hidden; }
+
+    .card.large { grid-column: span 2; }
+
+    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, transparent, var(--amber), transparent); opacity:0; transition: opacity .4s; }
+
+    .card.hot::before { opacity: 1; }
+
+    .metric-lbl { font-size: 10px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .metric-val { font-size: 20px; font-weight: 700; color: #fff; font-family: monospace; display: flex; align-items: baseline; gap: 1px; line-height: 1.2; }
+
+    .metric-val.red { color: var(--red); }
+
+    .metric-val.amber { color: var(--amber); }
+
+    .metric-val.dim { color: var(--dim); opacity: 0.4; }
+
+    .metric-unit { font-size: 12px; color: var(--dim); font-weight: normal; margin-left: 1px; }
+
+    .prog-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; gap: 10px; flex: 1; min-height: 0; }
+
+    .prog-hdr { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+
+    .prog-bar-bg { height: 8px; background: var(--dim2); border-radius: 5px; overflow: hidden; width: 100%; position: relative; border: 1px solid var(--border); }
+
+    .prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--amber), var(--red)); border-radius: 5px; transition: width 0.5s ease; }
+
+    
+
+    .sess-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 2px; }
+
+    .sess-item { text-align: left; }
+
+    .sess-lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; font-weight: 600; letter-spacing: .5px; }
+
+    .sess-val { font-size: 14px; font-weight: 700; font-family: monospace; color: #fff; margin-top: 2px; }
+
+    .cost-box { border-top: 1px solid var(--border); padding-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: center; flex-shrink: 0; }
+
+    .cost-item { display: flex; flex-direction: column; gap: 2px; }
+
+    .cost-lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; font-weight: 600; }
+
+    .cost-val { font-size: 16px; font-weight: bold; font-family: monospace; color: #fff; }
+
+    .cost-val.tot { color: var(--amber); font-size: 18px; }
+
+    /* ── EFFETS DE CHALEUR SVG ── */
+
+    @keyframes pulse-glow { 0%,100% { transform: scale(1); opacity: var(--o,0.3); } 50% { transform: scale(1.04); opacity: calc(var(--o,0.3) + 0.15); } }
+
+    @keyframes flicker-boost { 0%,100% { opacity: 0.75; } 50% { opacity: 0.95; filter: drop-shadow(0 0 10px var(--red)); } }
+
+    .heat-glow { transform-origin: center; mix-blend-mode: screen; transition: fill 0.4s ease, opacity 0.4s ease; }
+
+    .heat-active { animation: pulse-glow 2s infinite ease-in-out; }
+
+    .heat-boost { animation: flicker-boost 0.4s infinite alternate; }
+
+    .flex-zone-line { stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 4,4; fill: none; transition: stroke 0.4s; }
+
+    @media (prefers-reduced-motion: reduce) { .heat-active, .heat-boost { animation: none; } }
+
+    /* ── RESPONSIVE TABLETTE & SMARTPHONE (ZÉRO SCROLL) ── */
+
+    @media (max-width: 768px) {
+
+      .main-grid { grid-template-columns: 1fr; gap: 8px; }
+
+      .left-col { flex-direction: row; align-items: center; height: 120px; flex-shrink: 0; }
+
+      .mach-wrap { height: 100%; width: 160px; flex: none; }
+
+      .mach-wrap svg { height: 100%; width: auto; }
+
+      .left-col > :not(.mach-wrap) { flex: 1; }
+
+      .legend { display: none; }
+
+      .metrics { grid-template-columns: repeat(4, 1fr); }
+
+      .card.large { grid-column: span 2; }
+
+    }
+
+    @media (max-width: 480px) {
+
+      h1 { font-size: 14px; }
+
+      .sub { font-size: 9px; }
+
+      .clk { font-size: 12px; }
+
+      .left-col { height: 90px; gap: 6px; }
+
+      .mach-wrap { width: 120px; }
+
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+
+      .card.large { grid-column: span 2; }
+
+      .metric-val { font-size: 16px; }
+
+      .sess-val { font-size: 12px; }
+
+      .cost-val { font-size: 13px; }
+
+      .cost-val.tot { font-size: 15px; }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="dash">
+
+  <div class="hdr">
+
+    <div class="title-grp">
+
+      <div>
+
+        <h1>PLAQUE INDUCTION</h1>
+
+        <div class="sub">Samsung NZ63B5045GK/U1 — Cuisine</div>
+
+      </div>
+
+      <div id="st-badge" class="st-badge off"><div id="sd" class="dot o"></div><span id="st">VEILLE</span></div>
+
+    </div>
+
+    <div id="clk" class="clk">00:00:00</div>
+
+  </div>
+
+  <div class="main-grid">
+
+    <div class="left-col">
+
+      <div class="mach-wrap">
+
+        <svg viewBox="0 0 320 240" width="100%" height="100%">
+
+          <defs>
+
+            <filter id="blur-heat" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+
+            <pattern id="glass-grain" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.4" fill="#ffffff" opacity="0.03"/></pattern>
+
+          </defs>
+
+          <rect x="0" y="0" width="320" height="240" rx="8" fill="var(--glass)"/>
+
+          <rect x="0" y="0" width="320" height="240" rx="8" fill="url(#glass-grain)"/>
+
+          <!-- FLEX ZONE (gauche) -->
+
+          <path id="flex-frame" d="M 25,25 L 115,25 L 115,195 L 25,195 Z M 25,110 L 115,110" class="flex-zone-line"/>
+
+          <g transform="translate(70, 68)">
+
+            <ellipse id="glow-1" cx="0" cy="0" rx="35" ry="30" fill="none" class="heat-glow" filter="url(#blur-heat)"/>
+
+            <path d="M-15,0 L15,0 M0,-10 L0,10" stroke="var(--border)" stroke-width="1.5"/>
+
+          </g>
+
+          <g transform="translate(70, 152)">
+
+            <ellipse id="glow-2" cx="0" cy="0" rx="35" ry="30" fill="none" class="heat-glow" filter="url(#blur-heat)"/>
+
+            <path d="M-15,0 L15,0 M0,-10 L0,10" stroke="var(--border)" stroke-width="1.5"/>
+
+          </g>
+
+          <!-- GRAND FOYER (droite) -->
+
+          <g transform="translate(225, 110)">
+
+            <circle id="glow-3" cx="0" cy="0" r="52" fill="none" class="heat-glow" filter="url(#blur-heat)"/>
+
+            <circle cx="0" cy="0" r="48" fill="none" stroke="var(--border)" stroke-width="1.2" stroke-dasharray="6,4"/>
+
+            <circle cx="0" cy="0" r="32" fill="none" stroke="var(--dim2)" stroke-width="1"/>
+
+            <circle cx="0" cy="0" r="4" fill="var(--border)"/>
+
+          </g>
+
+          <text x="25" y="215" fill="var(--border)" font-family="monospace" font-size="6" letter-spacing="0.2">SAMSUNG NZ63B5045GK/U1</text>
+
+          <g transform="translate(190, 208)" opacity="0.85">
+
+            <rect x="0" y="0" width="105" height="14" rx="2" fill="var(--dim2)" stroke="var(--border)" stroke-width="0.8"/>
+
+            <circle id="ui-led" cx="10" cy="7" r="2.2" fill="var(--border)"/>
+
+            <text x="22" y="10" fill="var(--dim)" font-family="monospace" font-size="6.5" font-weight="bold" letter-spacing="0.5">HOME ASSISTANT</text>
+
+            <path id="ui-flex-indicator" d="M 88,5 L 94,5 L 94,9 L 88,9 Z" fill="none" stroke="var(--border)" stroke-width="1"/>
+
+          </g>
+
+        </svg>
+
+      </div>
+
+      <div class="legend">Répartition visuelle estimée d'après la puissance totale mesurée (OWON)</div>
+
+    </div>
+
+    <div class="right-col">
+
+      <div class="metrics">
+
+        <div class="card large" id="card-power">
+
+          <span class="metric-lbl">Puissance instantanée</span>
+
+          <div id="m-power" class="metric-val dim">0<span class="metric-unit">W</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Statut</span>
+
+          <div id="m-status" class="metric-val dim" style="font-size:16px;">VEILLE</div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Courant</span>
+
+          <div id="m-curr" class="metric-val dim">0.0<span class="metric-unit">A</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Tension</span>
+
+          <div id="m-volt" class="metric-val dim">--<span class="metric-unit">V</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Énergie totale</span>
+
+          <div id="m-nrg" class="metric-val" style="font-size:18px;">--<span class="metric-unit">kWh</span></div>
+
+        </div>
+
+      </div>
+
+      <div class="prog-box">
+
+        <div class="prog-hdr">
+
+          <span id="pwr-name" style="color:var(--dim);">Charge de la plaque</span>
+
+          <span id="pwr-pct" style="color:var(--amber); font-family:monospace;">0 %</span>
+
+        </div>
+
+        <div class="prog-bar-bg"><div id="pwr-fill" class="prog-bar-fill"></div></div>
+
+        <div class="sess-grid">
+
+          <div class="sess-item"><div class="sess-lbl">Durée session</div><div id="sess-dur" class="sess-val">--:--</div></div>
+
+          <div class="sess-item"><div class="sess-lbl">Énergie session</div><div id="sess-nrg" class="sess-val">0.00 kWh</div></div>
+
+          <div class="sess-item"><div class="sess-lbl">Puissance max</div><div id="sess-max" class="sess-val">0 W</div></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="cost-box">
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût session</span>
+
+      <div id="c-sess" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût / heure actuel</span>
+
+      <div id="c-hour" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Tarif kWh</span>
+
+      <div id="c-tarif" class="cost-val">-- €</div>
+
+    </div>
+
+    <div class="cost-item" style="text-align: right; border-left: 1px solid var(--border); padding-left: 15px;">
+
+      <span class="cost-lbl" style="color:var(--amber)">Énergie session</span>
+
+      <div id="c-tot" class="cost-val tot">0.00 kWh</div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const CFG={
+
+  HA_URL:location.origin, /* local + Nabu Casa */
+
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+
+  POWER:'sensor.owon_power_l2',
+
+  ENERGY:'sensor.owon_energy_l2',
+
+  CURRENT:'sensor.owon_current_l2',
+
+  VOLTAGE:'sensor.owon_voltage_l2',
+
+  MAXW:7400,      
+
+  ON_W:30,        
+
+  KWH:0.1927,
+
+};
+
+const ZONES=[
+
+  {id:'glow-3', base:3000, cap:3600, flex:false},
+
+  {id:'glow-1', base:2000, cap:2700, flex:true},
+
+  {id:'glow-2', base:2000, cap:2700, flex:true}
+
+];
+
+let S={power:0,curr:0,volt:0,nrg:0,on:false,sessOn:false,sessStartE:0,sessE:0,sessStart:0,maxW:0};
+
+let ws=null;
+
+const gid=id=>document.getElementById(id);
+
+function updateStove(power){
+
+  let remaining=power, flexActive=false, flexBoost=false;
+
+  ZONES.forEach(z=>{
+
+    const el=gid(z.id);
+
+    const alloc=Math.max(0, Math.min(remaining, z.cap));
+
+    remaining-=alloc;
+
+    const intensity=alloc/z.cap;
+
+    el.setAttribute('class','heat-glow');
+
+    if(alloc<=5){ el.setAttribute('fill','none'); el.style.opacity='0'; }
+
+    else {
+
+      el.classList.add('heat-active');
+
+      const boost = alloc > z.base*1.03;
+
+      if(boost){
+
+        el.classList.add('heat-boost'); el.setAttribute('fill','var(--red)'); el.style.opacity='0.85';
+
+        el.style.setProperty('--o','0.7');
+
+      } else {
+
+        const op=(0.2+intensity*0.6);
+
+        el.setAttribute('fill','var(--amber)'); el.style.opacity=op.toFixed(2);
+
+        el.style.setProperty('--o',op.toFixed(2));
+
+      }
+
+      if(z.flex){ flexActive=true; if(boost)flexBoost=true; }
+
+    }
+
+  });
+
+  gid('flex-frame').style.stroke = flexActive ? (flexBoost?'var(--red)':'var(--amber)') : 'var(--border)';
+
+  gid('ui-led').setAttribute('fill', power>CFG.ON_W ? 'var(--red)' : 'var(--border)');
+
+  const fi=gid('ui-flex-indicator');
+
+  fi.setAttribute('stroke', flexActive?'var(--accent)':'var(--border)');
+
+  fi.setAttribute('fill', flexActive?'var(--accent)':'none');
+
+}
+
+function connectWS(){
+
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket');
+
+  let id=1;
+
+  ws.onmessage=ev=>{
+
+    const m=JSON.parse(ev.data);
+
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+
+    else if(m.type==='auth_ok'){ws.send(JSON.stringify({id:id++,type:'subscribe_events',event_type:'state_changed'}));ws.send(JSON.stringify({id:id++,type:'get_states'}));}
+
+    else if(m.type==='result'&&Array.isArray(m.result)){diagnose(m.result);m.result.forEach(ig);}
+
+    else if(m.type==='event'&&m.event?.event_type==='state_changed')ig(m.event.data.new_state);
+
+  };
+
+  ws.onclose=()=>setTimeout(connectWS,5000);ws.onerror=()=>ws.close();
+
+}
+
+function diagnose(states){
+
+  const cand=states.filter(x=>x.entity_id && /owon|plaque|induction|cook|table/i.test(x.entity_id));
+
+  const present=new Set(states.map(x=>x.entity_id));
+
+  const pick=(key,dc)=>{
+
+    if(present.has(CFG[key])) return;
+
+    const m=cand.find(x=>x.attributes&&x.attributes.device_class===dc&&/l2/i.test(x.entity_id))
+
+         || cand.find(x=>x.attributes&&x.attributes.device_class===dc);
+
+    if(m){ CFG[key]=m.entity_id; }
+
+  };
+
+  pick('POWER','power'); pick('ENERGY','energy'); pick('CURRENT','current'); pick('VOLTAGE','voltage');
+
+}
+
+function ig(s){
+
+  if(!s||!s.entity_id) return;
+
+  const v=parseFloat(s.state);
+
+  switch(s.entity_id){
+
+    case CFG.POWER: S.power=isNaN(v)?0:Math.max(0,v); break;
+
+    case CFG.CURRENT: S.curr=isNaN(v)?0:v; break;
+
+    case CFG.VOLTAGE: S.volt=isNaN(v)?0:v; break;
+
+    case CFG.ENERGY: S.nrg=isNaN(v)?S.nrg:v; break;
+
+    default: return;
+
+  }
+
+  render();
+
+}
+
+function fmtDur(s){
+
+  if(!s||s<=0) return '--:--';
+
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60);
+
+  return h>0 ? h+'h'+String(m).padStart(2,'0') : String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+
+}
+
+function render(){
+
+  const on = S.power > CFG.ON_W;
+
+  if(on && !S.sessOn){ S.sessOn=true; S.sessStartE=S.nrg; S.sessStart=Date.now(); S.maxW=0; }
+
+  if(!on && S.sessOn){ S.sessOn=false; }
+
+  if(S.sessOn){ S.sessE=Math.max(0,S.nrg-S.sessStartE); if(S.power>S.maxW)S.maxW=S.power; }
+
+  S.on=on;
+
+  updateStove(S.power);
+
+  const badge=gid('st-badge'),sd=gid('sd'),st=gid('st');
+
+  if(on){badge.className='st-badge on';sd.className='dot r';st.textContent='EN CHAUFFE';}
+
+  else{badge.className='st-badge off';sd.className='dot o';st.textContent='VEILLE';}
+
+  
+
+  const set=(id,txt,cls)=>{const e=gid(id);if(e){e.innerHTML=txt;e.className='metric-val '+(cls||'');}};
+
+  set('m-power', Math.round(S.power)+'<span class="metric-unit">W</span>', on?(S.power>4000?'red':'amber'):'dim');
+
+  gid('card-power').className='card large'+(on?' hot':'');
+
+  
+
+  const sEl=gid('m-status'); sEl.textContent=on?'EN CHAUFFE':'VEILLE'; sEl.className='metric-val'+(on?' red':' dim'); sEl.style.fontSize='16px';
+
+  set('m-curr', (S.curr||0).toFixed(1)+'<span class="metric-unit">A</span>', S.curr>0.3?'':'dim');
+
+  set('m-volt', S.volt>0?Math.round(S.volt)+'<span class="metric-unit">V</span>':'--<span class="metric-unit">V</span>', S.volt>0?'':'dim');
+
+  set('m-nrg', (S.nrg||0).toFixed(1)+'<span class="metric-unit">kWh</span>', ''); gid('m-nrg').style.fontSize='18px';
+
+  const pct=Math.min(100, Math.round(S.power/CFG.MAXW*100));
+
+  gid('pwr-fill').style.width=pct+'%';
+
+  gid('pwr-pct').textContent=pct+' %';
+
+  gid('sess-dur').textContent = S.sessOn ? fmtDur((Date.now()-S.sessStart)/1000) : '--:--';
+
+  gid('sess-nrg').textContent = S.sessE.toFixed(2)+' kWh';
+
+  gid('sess-max').textContent = Math.round(S.maxW)+' W';
+
+  const cSess=S.sessE*CFG.KWH;
+
+  const cHour=(S.power/1000)*CFG.KWH;
+
+  gid('c-sess').textContent=cSess.toFixed(2)+' €';
+
+  gid('c-hour').textContent=cHour.toFixed(2)+' €';
+
+  gid('c-tarif').textContent=CFG.KWH.toFixed(4)+' €';
+
+  gid('c-tot').textContent=S.sessE.toFixed(2)+' kWh';
+
+}
+
+function tick(){
+
+  const n=new Date();gid('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+
+  render();
+
+}
+
+updateStove(0);
+
+connectWS();
+
+setInterval(tick,1000);
+
+render();
+
+</script>
+
+</body>
+
+</html>

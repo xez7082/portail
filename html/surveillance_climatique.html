@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPD — Surveillance Climatique 68127</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root{
+            --bg-deep:#1c2431;
+            --bg-panel:#27303f;
+            --bg-card:#27303f;
+            --border-dark:#3c4a5e;
+            --border-red:#2f5e94;
+            --accent-red:#4da3ff;
+            --accent-red-glow:#7cc0ff;
+            --text-primary:#eef3fa;
+            --text-secondary:#c6d2e2;
+            --text-dim:#aebdd0;
+            --text-red:#7cc0ff;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:var(--bg-deep);color:var(--text-primary);font-family:'Share Tech Mono',monospace;font-size:20px;overflow-x:hidden}
+        .wrap{width:100%;padding:16px 22px 20px}
+
+        .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border-red);flex-wrap:wrap}
+        .hl{display:flex;align-items:center;gap:14px}
+        .star{width:44px;height:44px;border:2px solid var(--border-red);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .star::before{content:'\2605';font-size:22px;color:var(--accent-red);text-shadow:0 0 8px var(--accent-red-glow)}
+        h1{font-family:'Share Tech Mono',monospace;font-size:28px;font-weight:400;letter-spacing:2px;text-transform:uppercase}
+        .loc{font-size:16px;color:#a8d1ff;letter-spacing:2px;margin-top:2px}
+        .hstat{display:flex;align-items:center;gap:14px;font-size:18px;color:var(--text-secondary);flex-wrap:wrap}
+        .dot{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:middle}
+        .dot.g{background:#3ec43e;box-shadow:0 0 8px rgba(62,196,62,.6)}
+        .dot.r{background:var(--accent-red);box-shadow:0 0 8px var(--accent-red-glow)}
+
+        .bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+        .yrs{display:flex;gap:8px;flex-wrap:wrap}
+        .ch{padding:12px 22px;background:0 0;border:1px solid var(--border-dark);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:19px;cursor:pointer}
+        .ch:focus-visible{outline:2px solid var(--accent-red)}
+        .ch.on{color:var(--text-red);border-color:var(--accent-red);background:rgba(77,163,255,.14);font-weight:bold}
+        .ci{display:inline-block;width:14px;height:14px;border-radius:2px;margin-right:8px;vertical-align:middle}
+        .live{display:flex;align-items:center;gap:12px;font-size:19px;color:var(--text-secondary)}
+        .lt{font-family:'Share Tech Mono',monospace;font-size:38px;color:var(--text-primary)}
+
+        .cp{background:var(--bg-card);border:1px solid var(--border-dark);padding:16px 16px 12px}
+        .cw{position:relative;height:clamp(320px,52vh,700px)}
+        .cw canvas{width:100%!important;height:100%!important}
+        .nodata{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:22px;color:var(--text-dim);text-align:center;padding:20px}
+        .note{display:none;margin-top:10px;font-size:16px;color:#f0b429;letter-spacing:1px}
+
+        .sr{display:grid;grid-template-columns:repeat(5,1fr);margin-top:14px;border:1px solid var(--border-dark);background:var(--bg-panel)}
+        .sc{padding:18px 10px;text-align:center;border-right:1px solid var(--border-dark)}
+        .sc:last-child{border-right:none}
+        .sv{font-size:36px;font-family:'Share Tech Mono',monospace;margin-bottom:4px}
+        .sv.r{color:var(--text-red)}
+        .sl{font-size:16px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase}
+
+        @media(max-width:700px){
+            body{font-size:17px}
+            h1{font-size:21px}
+            .lt{font-size:30px}
+            .sv{font-size:26px}
+            .sl{font-size:14px}
+            .ch{padding:10px 16px;font-size:17px}
+            .sr{grid-template-columns:repeat(3,1fr)}
+            .sc:nth-child(3){border-right:none}
+            .cw{height:clamp(240px,45vh,450px)}
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <header class="hdr">
+        <div class="hl">
+            <div class="star"></div>
+            <div>
+                <h1>Surveillance Climatique</h1>
+                <div class="loc">STE-CROIX-EN-PLAINE // 68127 — EXTREMES MENSUELS (MIN / MAX)</div>
+            </div>
+        </div>
+        <div class="hstat"><span class="dot r" id="md"></span><span id="mt">CONNEXION...</span><span id="clk">--:--:--</span></div>
+    </header>
+
+    <div class="bar">
+        <div class="yrs" id="yrs"></div>
+        <div class="live"><span class="dot g" id="ldot"></span><span>ACTUELLE :</span><span class="lt" id="ltmp">--.-&#176;C</span></div>
+    </div>
+
+    <section class="cp">
+        <div class="cw"><canvas id="cvs"></canvas><div class="nodata" id="nodata">AUCUNE DONNEE ENREGISTREE</div></div>
+        <div class="note" id="histnote">&#9888; Annees avant le capteur : archive meteo Open-Meteo (Ste-Croix-en-Plaine)</div>
+    </section>
+
+    <div class="sr">
+        <div class="sc"><div class="sv" id="sMx">--</div><div class="sl">Max releve</div></div>
+        <div class="sc"><div class="sv" id="sMn">--</div><div class="sl">Min releve</div></div>
+        <div class="sc"><div class="sv r" id="sAv">--</div><div class="sl">Moyenne an.</div></div>
+        <div class="sc"><div class="sv" id="sEc">--</div><div class="sl">Ecart-type</div></div>
+        <div class="sc"><div class="sv" id="sDt">--</div><div class="sl">Vs Ref.</div></div>
+    </div>
+</div>
+<script>
+'use strict';
+/* ============ CONFIGURATION ============ */
+var HA_URL=location.origin; /* local + Nabu Casa */
+var HA_TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY';
+var ENTITY='sensor.tdeg_cabane_temperature';
+
+var MO=['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec'];
+var HIST='rpd:cabane_historique'; /* archive Open-Meteo importee via Spook */
+var FIRST_YEAR=2019; /* debut de l'archive importee */
+function buildYears(){
+    var out=[],cy=new Date().getFullYear();
+    for(var y=FIRST_YEAR;y<=cy;y++)out.push(y);
+    return out;
+}
+var YEARS=buildYears();
+var YC={
+    2019:{s:'rgba(95,102,135,0.7)',b:'rgba(130,138,170,0.95)'},
+    2020:{s:'rgba(55,120,180,0.7)',b:'rgba(80,150,210,0.95)'},
+    2021:{s:'rgba(55,150,150,0.7)',b:'rgba(75,185,180,0.95)'},
+    2022:{s:'rgba(130,155,50,0.7)',b:'rgba(160,185,65,0.95)'},
+    2023:{s:'rgba(200,120,25,0.72)',b:'rgba(225,145,40,0.95)'},
+    2024:{s:'rgba(215,150,30,0.75)',b:'rgba(240,175,45,0.95)'},
+    2025:{s:'rgba(235,80,50,0.8)',b:'rgba(250,105,70,0.95)'},
+    2026:{s:'rgba(255,110,80,0.85)',b:'rgba(255,140,105,0.98)'}
+};
+function yColor(y){
+    if(YC[y])return YC[y];
+    /* annees > 2026 : progression automatique dans les rouges */
+    var i=y-2027;
+    var r=255,g=Math.max(60,150-i*20),b=Math.max(50,120-i*20);
+    return{s:'rgba('+r+','+g+','+b+',0.85)',b:'rgba('+r+','+Math.min(255,g+25)+','+Math.min(255,b+20)+',0.98)'};
+}
+var histMask={}; /* par annee : quels mois viennent de l'archive */
+var NOW=new Date();
+var selYears=[NOW.getFullYear()];
+if(YEARS.indexOf(NOW.getFullYear()-1)!==-1)selYears.unshift(NOW.getFullYear()-1);
+
+/* ============ WEBSOCKET HA ============ */
+var ws=null,wsReady=false,msgId=1,pending={},reconnectTimer=null;
+function connectWS(){
+    return new Promise(function(resolve,reject){
+        if(wsReady&&ws&&ws.readyState===1){resolve();return}
+        try{ws=new WebSocket(HA_URL.replace(/^http/,'ws')+'/api/websocket')}catch(e){reject(e);return}
+        var done=false;
+        ws.onmessage=function(ev){
+            var m;try{m=JSON.parse(ev.data)}catch(e){return}
+            if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:HA_TOKEN}));
+            else if(m.type==='auth_ok'){wsReady=true;done=true;setMode(true);resolve()}
+            else if(m.type==='auth_invalid'){setMode(false,'JETON INVALIDE');if(!done){done=true;reject(new Error('auth'))}ws.close()}
+            else if(m.type==='result'&&pending[m.id]){var p=pending[m.id];delete pending[m.id];m.success?p.res(m.result):p.rej(m.error)}
+        };
+        ws.onerror=function(){if(!done){done=true;setMode(false);reject(new Error('ws'))}};
+        ws.onclose=function(){
+            wsReady=false;
+            for(var id in pending)pending[id].rej(new Error('closed'));
+            pending={};
+            if(!reconnectTimer){setMode(false);reconnectTimer=setTimeout(function(){reconnectTimer=null;connectWS().then(function(){build();updLive()}).catch(function(){})},10000)}
+        };
+    });
+}
+function callWS(msg){
+    return connectWS().then(function(){
+        return new Promise(function(res,rej){
+            var id=msgId++;msg.id=id;pending[id]={res:res,rej:rej};
+            ws.send(JSON.stringify(msg));
+            setTimeout(function(){if(pending[id]){delete pending[id];rej(new Error('timeout'))}},15000);
+        });
+    });
+}
+function setMode(ok,txt){
+    var md=document.getElementById('md'),mt=document.getElementById('mt');
+    md.className='dot '+(ok?'g':'r');
+    mt.textContent=ok?'HA CONNECTE':(txt||'HA INJOIGNABLE');
+}
+
+/* ============ MOYENNES MENSUELLES REELLES ============ */
+var cache={};
+function statsYear(id,y){
+    var E=function(){return[null,null,null,null,null,null,null,null,null,null,null,null]};
+    return callWS({
+        type:'recorder/statistics_during_period',
+        start_time:new Date(y,0,1,0,0,0).toISOString(),
+        end_time:new Date(y,11,31,23,59,59).toISOString(),
+        statistic_ids:[id],period:'month',types:['mean','min','max']
+    }).then(function(res){
+        var rows=(res&&res[id])?res[id]:[];
+        var mean=E(),mn=E(),mx=E(),filled=0;
+        rows.forEach(function(r){
+            var idx=new Date(r.start).getMonth();
+            if(idx<0||idx>11)return;
+            var v=(r.mean!==null&&r.mean!==undefined)?r.mean:
+                  ((r.min!==null&&r.min!==undefined&&r.max!==null&&r.max!==undefined)?(r.min+r.max)/2:null);
+            if(v===null)return;
+            mean[idx]=Math.round(v*10)/10;
+            if(r.min!==null&&r.min!==undefined)mn[idx]=Math.round(r.min*10)/10;
+            if(r.max!==null&&r.max!==undefined)mx[idx]=Math.round(r.max*10)/10;
+            filled++;
+        });
+        return filled?{mean:mean,min:mn,max:mx}:null;
+    }).catch(function(e){console.warn('stats:',e);return null});
+}
+var rangeByYear={}; /* extremes mensuels par annee */
+var meanByYear={};  /* moyennes mensuelles par annee */
+function yearSeries(y){
+    if(cache[y]){histMask[y]=cache[y].mask;rangeByYear[y]=cache[y].rng;meanByYear[y]=cache[y].d;return Promise.resolve(cache[y].d)}
+    /* fusion mois par mois : le capteur est prioritaire,
+       l'archive Open-Meteo comble les mois sans mesure */
+    return Promise.all([statsYear(ENTITY,y),statsYear(HIST,y)]).then(function(r){
+        var cap=r[0],arc=r[1];
+        var out=[],mask=[],rmin=[],rmax=[];
+        for(var i=0;i<12;i++){
+            var src=null,fromArc=false;
+            if(cap&&cap.mean[i]!==null){src=cap}
+            else if(arc&&arc.mean[i]!==null){src=arc;fromArc=true}
+            if(src){
+                out.push(src.mean[i]);mask.push(fromArc);
+                rmin.push(src.min[i]);rmax.push(src.max[i]);
+            }else{out.push(null);mask.push(false);rmin.push(null);rmax.push(null)}
+        }
+        histMask[y]=mask;
+        rangeByYear[y]={min:rmin,max:rmax};
+        meanByYear[y]=out;
+        if(!out.some(function(v){return v!==null}))return[];
+        if(y!==NOW.getFullYear())cache[y]={d:out,mask:mask,rng:rangeByYear[y]};
+        return out;
+    });
+}
+
+/* ============ COULEUR ============ */
+function tC(temp){var t=Math.max(0,Math.min(1,(temp+8)/43));var S=[[0,40,90,190],[.2,45,155,200],[.42,80,195,80],[.62,230,195,40],[.82,245,85,50],[1,255,70,70]];var lo=S[0],hi=S[S.length-1];for(var i=0;i<S.length-1;i++){if(t>=S[i][0]&&t<=S[i+1][0]){lo=S[i];hi=S[i+1];break}}var r=hi[0]-lo[0]===0?0:(t-lo[0])/(hi[0]-lo[0]);return'rgb('+Math.round(lo[1]+(hi[1]-lo[1])*r)+','+Math.round(lo[2]+(hi[2]-lo[2])*r)+','+Math.round(lo[3]+(hi[3]-lo[3])*r)+')'}
+
+/* ============ GRAPHIQUE ============ */
+var chart=null;
+var buildSeq=0;
+async function build(){
+    var seq=++buildSeq;
+    document.getElementById('nodata').style.display='none';
+    var datasets=[],any=false;
+    var last=selYears[selYears.length-1];
+    for(var i=0;i<selYears.length;i++){
+        var y=selYears[i];
+        var mean=await yearSeries(y);
+        if(seq!==buildSeq)return;
+        if(mean.length&&mean.some(function(v){return v!==null}))any=true;
+        var rg=rangeByYear[y]||{min:[],max:[]};
+        /* barre flottante min -> max pour chaque mois */
+        var band=[];
+        for(var k=0;k<12;k++){
+            band.push((rg.min[k]!==null&&rg.min[k]!==undefined&&rg.max[k]!==null&&rg.max[k]!==undefined)?[rg.min[k],rg.max[k]]:null);
+        }
+        var c=yColor(y);
+        var single=(selYears.length===1);
+        datasets.push({
+            label:String(y),
+            data:band,
+            backgroundColor:single?band.map(function(v){return v?tC(v[1]).replace('rgb','rgba').replace(')',',0.75)'):'rgba(0,0,0,0)'}):c.s,
+            borderColor:single?band.map(function(v){return v?tC(v[1]):'rgba(0,0,0,0)'}):c.b,
+            borderWidth:1,borderRadius:3,order:2
+        });
+        /* moyenne en ligne de repere (annee principale uniquement) */
+        if(y===last){
+            datasets.push({
+                type:'line',label:'Moyenne '+y,data:meanByYear[y]||[],
+                borderColor:'#eef3fa',backgroundColor:'#eef3fa',
+                borderWidth:2,pointRadius:4,pointHoverRadius:6,
+                tension:.25,spanGaps:true,order:1
+            });
+        }
+    }
+    if(seq!==buildSeq)return;
+    if(chart)chart.destroy();
+    chart=new Chart(document.getElementById('cvs').getContext('2d'),{
+        type:'bar',
+        data:{labels:MO,datasets:datasets},
+        options:{
+            responsive:true,maintainAspectRatio:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{
+                legend:{display:true,labels:{color:'#c6d2e2',font:{family:'Share Tech Mono',size:19},boxWidth:22,boxHeight:14,padding:18}},
+                tooltip:{backgroundColor:'rgba(28,36,49,0.97)',borderColor:'rgba(77,163,255,0.55)',borderWidth:1,titleColor:'#eef3fa',bodyColor:'#c6d2e2',titleFont:{family:'Share Tech Mono',size:20},bodyFont:{family:'Share Tech Mono',size:19},padding:14,callbacks:{label:function(c){
+                    if(c.dataset.type==='line'){return c.parsed.y===null?null:' Moyenne : '+c.parsed.y.toFixed(1)+'\u00B0C'}
+                    var raw=c.raw;if(!raw)return null;
+                    var mk=histMask[parseInt(c.dataset.label)];
+                    var tag=(mk&&mk[c.dataIndex])?' [ARCHIVE]':'';
+                    return' '+c.dataset.label+' : min '+raw[0].toFixed(1)+'\u00B0 / max '+raw[1].toFixed(1)+'\u00B0C'+tag;
+                }}}
+            },
+            scales:{
+                x:{grid:{color:'rgba(85,103,127,0.45)'},ticks:{color:'#c6d2e2',font:{family:'Share Tech Mono',size:19}},border:{color:'rgba(85,103,127,0.8)'}},
+                y:{grid:{color:'rgba(85,103,127,0.45)'},ticks:{color:'#c6d2e2',font:{family:'Share Tech Mono',size:19},callback:function(v){return v+'\u00B0'}},border:{color:'rgba(85,103,127,0.8)'}}
+            },
+            animation:{duration:300}
+        }
+    });
+    if(!any)document.getElementById('nodata').style.display='flex';
+    var anyHist=selYears.some(function(y){var mk=histMask[y];return mk&&mk.some(function(b){return b})});
+    document.getElementById('histnote').style.display=anyHist?'block':'none';
+    updStat();
+}
+function updStat(){
+    var lastY=selYears[selYears.length-1];
+    var mean=(meanByYear[lastY]||[]).filter(function(v){return v!==null});
+    var rg=rangeByYear[lastY];
+    var ids=['sMx','sMn','sAv','sEc','sDt'];
+    if(!mean.length){ids.forEach(function(id){document.getElementById(id).textContent='--'});return}
+    var mxs=rg?rg.max.filter(function(v){return v!==null}):[];
+    var mns=rg?rg.min.filter(function(v){return v!==null}):[];
+    var mx=mxs.length?Math.max.apply(null,mxs):Math.max.apply(null,mean);
+    var mn=mns.length?Math.min.apply(null,mns):Math.min.apply(null,mean);
+    var av=mean.reduce(function(a,b){return a+b},0)/mean.length;
+    var ec=Math.sqrt(mean.reduce(function(s2,v){return s2+Math.pow(v-av,2)},0)/mean.length);
+    document.getElementById('sMx').textContent=mx.toFixed(1)+'\u00B0';
+    document.getElementById('sMx').style.color=tC(mx);
+    document.getElementById('sMn').textContent=mn.toFixed(1)+'\u00B0';
+    document.getElementById('sMn').style.color=tC(mn);
+    document.getElementById('sAv').textContent=av.toFixed(1)+'\u00B0';
+    document.getElementById('sEc').textContent=ec.toFixed(1)+'\u00B0';
+    var dE=document.getElementById('sDt');
+    if(selYears.length>=2){
+        var refY=selYears[selYears.length-2];
+        var ref=(meanByYear[refY]||[]).filter(function(v){return v!==null});
+        if(ref.length){
+            var rA=ref.reduce(function(a,b){return a+b},0)/ref.length,dt=av-rA;
+            dE.textContent=(dt>=0?'+':'')+dt.toFixed(1)+'\u00B0';
+            dE.className=dt>=0?'sv r':'sv';
+        }else{dE.textContent='--';dE.className='sv'}
+    }else{dE.textContent='--';dE.className='sv'}
+}
+
+/* ============ SELECTION DES ANNEES ============ */
+function rY(){
+    var box=document.getElementById('yrs');box.innerHTML='';
+    YEARS.forEach(function(y){
+        var b=document.createElement('button');
+        var sel=selYears.indexOf(y)!==-1;
+        b.className='ch'+(sel?' on':'');
+        var c=yColor(y);
+        b.innerHTML='<span class="ci" style="background:'+c.b+'"></span>'+y;
+        b.onclick=function(){
+            if(sel){if(selYears.length>1)selYears=selYears.filter(function(v){return v!==y})}
+            else{selYears.push(y);selYears.sort()}
+            rY();build();
+        };
+        box.appendChild(b);
+    });
+}
+
+/* ============ TEMPERATURE ACTUELLE ============ */
+function updLive(){
+    var el=document.getElementById('ltmp'),dot=document.getElementById('ldot');
+    callWS({type:'get_states'}).then(function(states){
+        for(var i=0;i<states.length;i++){
+            if(states[i].entity_id===ENTITY){
+                var v=parseFloat(states[i].state);
+                if(!isNaN(v)){el.textContent=v.toFixed(1)+'\u00B0C';el.style.color=tC(v);dot.className='dot g'}
+                else{el.textContent=states[i].state.toUpperCase();dot.className='dot r'}
+                return;
+            }
+        }
+        el.textContent='ENTITE ?';el.style.color='var(--text-red)';dot.className='dot r';
+    }).catch(function(){dot.className='dot r'});
+}
+
+/* ============ HORLOGE ============ */
+setInterval(function(){
+    var n=new Date();NOW.setTime(n.getTime());
+    document.getElementById('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(function(v){return String(v).padStart(2,'0')}).join(':');
+},1000);
+setInterval(updLive,60000);
+/* rafraichissement du graphique toutes les heures (l'annee courante
+   n'est pas en cache, ses nouvelles stats sont donc rechargees) ;
+   au changement d'annee, la liste des annees se met a jour seule */
+var lastYearSeen=NOW.getFullYear();
+setInterval(function(){
+    if(NOW.getFullYear()!==lastYearSeen){
+        lastYearSeen=NOW.getFullYear();
+        YEARS=buildYears();
+        if(selYears.indexOf(lastYearSeen)===-1)selYears.push(lastYearSeen);
+        rY();
+    }
+    build();
+},3600000);
+
+/* ============ DEMARRAGE ============ */
+rY();
+connectWS().then(function(){build();updLive()}).catch(function(){build()});
+</script>
+</body>
+</html>

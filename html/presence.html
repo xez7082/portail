@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar de présence</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62; --violet:#a5b4fc; --cyan:#22d3ee;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;overflow-y:auto;scrollbar-width:thin;padding:18px;
+  display:flex;flex-direction:column;gap:14px}
+h1{font-size:20px;font-weight:800;letter-spacing:.06em;color:var(--violet)}
+#cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-content:start}
+
+.pc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+  display:flex;flex-direction:column;gap:14px}
+.hd{display:flex;gap:14px;align-items:center}
+.hd img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--ok);flex-shrink:0;background:var(--card2)}
+.hd img.away{border-color:var(--warn)}
+.hd .n{font-size:22px;font-weight:800}
+.hd .st{font-size:15px;font-weight:800;letter-spacing:.06em;margin-top:2px}
+.st.home{color:var(--okl)} .st.away{color:var(--warn)}
+.bat{margin-left:auto;text-align:right}
+.bat .p{font-size:24px;font-weight:800}
+.bat .s{font-size:13px;color:var(--dim);margin-top:2px}
+.loc{font-size:16px;color:var(--txt);display:flex;gap:8px;align-items:center}
+.loc .pin{color:var(--violet)}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ti{background:var(--card2);border-radius:10px;padding:12px 14px}
+.ti .l{font-size:13px;color:var(--dim)}
+.ti .v{font-size:18px;font-weight:800;margin-top:4px;color:var(--cyan);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.hist div{font-size:14px;color:var(--dim);display:flex;gap:8px;align-items:center}
+@media(max-width:420px){.tiles{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>📡 Présence</h1>
+  <div id="cards"></div>
+</div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  PERSONS:[
+    {n:'Patrick', img:'/local/images/patrick.png',
+     person:'person.patrick_cubot_2',
+     geo:'sensor.cubot_geocoded_location',
+     bat:'sensor.cubot_battery_level', batst:'sensor.cubot_battery_state',
+     dist:'sensor.distance_domicile_corrigee_patrick',
+     wifi:'sensor.cubot_wi_fi_connection', wsig:'sensor.cubot_wi_fi_signal_strength',
+     bt:'binary_sensor.cubot_bluetooth_state', net:'sensor.cubot_network_type',
+     l1:'input_text.patrick_last_location_1', l2:'input_text.patrick_last_location_2'},
+    {n:'Sandra', img:'/local/images/sandra.png',
+     person:'person.sandra_note_21',
+     geo:'sensor.note_21_geocoded_location',
+     bat:'sensor.note_21_battery_level', batst:'sensor.note_21_battery_state',
+     dist:'sensor.distance_domicile_corrigee_sandra',
+     wifi:'sensor.note_21_wi_fi_connection', wsig:'sensor.note_21_wi_fi_signal_strength',
+     bt:'binary_sensor.note_21_bluetooth_state', net:'binary_sensor.note_21_wi_fi_state',
+     l1:'input_text.sandra_last_location_1', l2:'input_text.sandra_last_location_2'}
+  ]
+};
+
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const st=e=>{const s=HA[e]?HA[e].state:null;return(s==null||s==='unknown'||s==='unavailable')?null:s;};
+const BATST={charging:'En charge ⚡',discharging:'Sur batterie',full:'Chargée ✔',not_charging:'Pas en charge'};
+
+document.getElementById('cards').innerHTML=CFG.PERSONS.map((p,i)=>`
+  <div class="pc">
+    <div class="hd">
+      <img id="im-${i}" src="${p.img}" alt="${p.n}">
+      <div>
+        <div class="n">${p.n}</div>
+        <div class="st home" id="st-${i}">--</div>
+      </div>
+      <div class="bat">
+        <div class="p" id="bp-${i}">--%</div>
+        <div class="s" id="bs-${i}">--</div>
+      </div>
+    </div>
+    <div class="loc"><span class="pin">📍</span><span id="geo-${i}">--</span></div>
+    <div class="tiles">
+      <div class="ti"><div class="l">Distance</div><div class="v" id="d-${i}">-- km</div></div>
+      <div class="ti"><div class="l">📶 WiFi (<span id="ws-${i}">--</span>)</div><div class="v" id="wf-${i}">--</div></div>
+      <div class="ti"><div class="l">Bluetooth</div><div class="v" id="bt-${i}">--</div></div>
+      <div class="ti"><div class="l">Réseau</div><div class="v" id="nt-${i}">--</div></div>
+    </div>
+    <div class="hist">
+      <div>🕓 <span id="h1-${i}">--</span></div>
+      <div>🕓 <span id="h2-${i}">--</span></div>
+    </div>
+  </div>`).join('');
+
+function render(){
+  CFG.PERSONS.forEach((p,i)=>{
+    const ps=st(p.person);
+    const home=ps==='home';
+    const se=gid('st-'+i);
+    se.textContent=ps==null?'--':(home?'À DOMICILE':ps==='not_home'?'ABSENT':ps.toUpperCase());
+    se.className='st '+(home?'home':'away');
+    gid('im-'+i).className=home?'':'away';
+
+    const b=num(p.bat), be=gid('bp-'+i);
+    be.textContent=b==null?'--%':Math.round(b)+'%';
+    be.style.color=b==null?'var(--dim2)':b<=20?'var(--bad)':b<=50?'var(--warn)':'var(--okl)';
+    const bst=st(p.batst);
+    gid('bs-'+i).textContent=bst?(BATST[bst]||bst):'--';
+
+    gid('geo-'+i).textContent=st(p.geo)||(home?'Home':'--');
+
+    const d=num(p.dist);
+    gid('d-'+i).textContent=d==null?'-- km':d.toFixed(2).replace('.',',')+' km';
+    const sig=num(p.wsig);
+    gid('ws-'+i).textContent=sig==null?'--':Math.round(sig);
+    const wf=st(p.wifi);
+    gid('wf-'+i).textContent=(wf&&wf!=='<not connected>')?wf:'Non connecté';
+    const bt=st(p.bt);
+    gid('bt-'+i).textContent=bt==null?'--':(bt==='on'?'Activé':'Désactivé');
+    gid('nt-'+i).textContent=st(p.net)||'--';
+    gid('h1-'+i).textContent=st(p.l1)||'--';
+    gid('h2-'+i).textContent=st(p.l2)||'--';
+  });
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

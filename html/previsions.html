@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prévisions solaires</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62; --moon:#c4b5fd;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:ui-monospace,Consolas,"Segoe UI Mono",monospace;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;
+  overflow-y:auto;scrollbar-width:thin;padding:18px;gap:16px}
+
+#hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+#hdr h1{font-size:clamp(17px,2.4vh,22px);letter-spacing:.14em;color:var(--warn);font-weight:800}
+#hdr .sub{font-size:13px;color:var(--dim);letter-spacing:.1em;margin-top:4px}
+#solcast{font-size:14px;font-weight:800;color:var(--okl);border:1px solid rgba(63,174,100,.5);
+  border-radius:8px;padding:8px 14px}
+#solcast.off{color:var(--dim2);border-color:var(--line)}
+
+#traj{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 10px}
+#traj .t{text-align:center;font-size:13px;letter-spacing:.18em;color:var(--dim);font-weight:700;margin:6px 0 2px}
+#traj svg{width:100%;height:auto;max-height:min(30vh,240px);display:block;margin:0 auto}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+.tl{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tl .l{font-size:13px;color:var(--dim);letter-spacing:.14em;font-weight:700}
+.tl .v{font-size:clamp(26px,4vh,34px);font-weight:800;margin-top:6px}
+.tl .v small{font-size:15px;color:var(--dim)}
+.tl .s{font-size:13px;color:var(--dim2);margin-top:4px;letter-spacing:.08em}
+
+.rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.rw{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.rw .l{font-size:14px;letter-spacing:.14em;font-weight:800;color:var(--dim)}
+.rw .v{font-size:20px;font-weight:800;margin-top:8px;display:flex;align-items:center;gap:10px}
+.rw .s{font-size:14px;color:var(--dim2);margin-top:4px}
+#src{font-size:13px;color:var(--dim2);letter-spacing:.1em}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <div>
+      <h1>PRÉVISIONS SOLAIRES — CENTRE ALSACE</h1>
+      <div class="sub">STE-CROIX-EN-PLAINE · 48.009°N 7.405°E</div>
+    </div>
+    <div id="solcast" class="off">… SOLCAST</div>
+  </div>
+
+  <div id="traj">
+    <div class="t">TRAJECTOIRE SOLAIRE — AUJOURD'HUI</div>
+    <svg id="sky" viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet">
+      <!-- arc décoratif -->
+      <path d="M 60 220 Q 400 -60 740 220" fill="none" stroke="var(--warn)" stroke-width="2.5"
+            stroke-dasharray="8 9" opacity=".75"/>
+      <!-- colline SUD -->
+      <path d="M 330 220 Q 400 140 470 220 Z" fill="rgba(63,174,100,.16)" stroke="rgba(125,219,154,.4)"/>
+      <text x="400" y="205" text-anchor="middle" fill="var(--okl)" font-size="13" letter-spacing="3">SUD</text>
+      <!-- horizon -->
+      <line x1="40" y1="220" x2="760" y2="220" stroke="var(--line-strong,#55677f)" stroke-width="2"/>
+      <text x="70"  y="245" text-anchor="middle" fill="var(--dim2)" font-size="14">06h</text>
+      <text x="400" y="245" text-anchor="middle" fill="var(--dim2)" font-size="14">13h</text>
+      <text x="730" y="245" text-anchor="middle" fill="var(--dim2)" font-size="14">21h</text>
+      <!-- soleil -->
+      <g id="sun" opacity="0">
+        <circle id="sun-halo" r="22" fill="var(--warn)" opacity=".18"/>
+        <circle id="sun-c" r="11" fill="var(--warn)"/>
+        <g id="rays" stroke="var(--warn)" stroke-width="2.4" stroke-linecap="round">
+          <line x1="0" y1="-17" x2="0" y2="-23"/><line x1="0" y1="17" x2="0" y2="23"/>
+          <line x1="-17" y1="0" x2="-23" y2="0"/><line x1="17" y1="0" x2="23" y2="0"/>
+          <line x1="-12" y1="-12" x2="-17" y2="-17"/><line x1="12" y1="12" x2="17" y2="17"/>
+          <line x1="-12" y1="12" x2="-17" y2="17"/><line x1="12" y1="-12" x2="17" y2="-17"/>
+        </g>
+        <text id="sun-lbl" x="30" y="-14" fill="var(--txt)" font-size="17" font-weight="700">--°</text>
+      </g>
+      <!-- lune (nuit) -->
+      <text id="night" x="400" y="120" text-anchor="middle" fill="var(--moon)" font-size="17"
+            letter-spacing="2" opacity="0">🌙 SOLEIL SOUS L'HORIZON</text>
+    </svg>
+  </div>
+
+  <div class="tiles">
+    <div class="tl"><div class="l">AZIMUT</div>
+      <div class="v" style="color:var(--warn)"><span id="az">--</span>°</div>
+      <div class="s" id="az-c">–</div></div>
+    <div class="tl"><div class="l">ÉLÉVATION</div>
+      <div class="v" style="color:var(--warn)"><span id="el">--</span>°</div>
+      <div class="s" id="el-c">–</div></div>
+    <div class="tl"><div class="l">PIC SOLCAST</div>
+      <div class="v" style="color:var(--okl)"><span id="pic">--</span> <small id="pic-u">kW</small></div>
+      <div class="s">AUJOURD'HUI</div></div>
+    <div class="tl"><div class="l">TOTAL JOUR</div>
+      <div class="v" style="color:var(--okl)"><span id="tot">--</span> <small>kWh</small></div>
+      <div class="s">SOLCAST PRÉVIS.</div></div>
+  </div>
+
+  <div class="rows">
+    <div class="rw"><div class="l">CONDITION</div>
+      <div class="v"><span id="w-i">☁️</span><span id="w-t">--</span></div>
+      <div class="s"><span id="w-temp">--</span>° · <span id="w-hum">--</span>% HR</div></div>
+    <div class="rw"><div class="l">VENT</div>
+      <div class="v"><span id="wd">--</span> km/h</div>
+      <div class="s" id="wd-c">–</div></div>
+    <div class="rw"><div class="l">LUNE</div>
+      <div class="v" style="color:var(--moon)"><span id="m-i">🌙</span><span id="m-t">--</span></div>
+      <div class="s">&nbsp;</div></div>
+  </div>
+
+  <div id="src">SOURCE : OPENWEATHERMAP + SOLCAST</div>
+</div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  WEATHER:'weather.sainte_croix_en_plaine',
+  AZ:'sensor.sun_solar_azimuth',
+  EL:'sensor.sun_solar_elevation',
+  PIC:'sensor.solcast_pv_forecast_previsions_du_pic_aujourd_hui',
+  TOT:'sensor.solcast_pv_forecast_previsions_pour_aujourd_hui',
+  WIND:'sensor.openweathermap_wind_speed',
+  MOON:'sensor.moon_phase'
+};
+
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const st=e=>HA[e]?HA[e].state:null;
+const attr=(e,a)=>HA[e]&&HA[e].attributes?HA[e].attributes[a]:null;
+
+const CARD=['NORD','NORD-EST','EST','SUD-EST','SUD','SUD-OUEST','OUEST','NORD-OUEST'];
+const COND={sunny:['☀️','ENSOLEILLÉ'],'clear-night':['🌙','NUIT CLAIRE'],partlycloudy:['⛅','PARTIELLEMENT NUAGEUX'],
+  cloudy:['☁️','NUAGEUX'],rainy:['🌧️','PLUIE'],pouring:['⛈️','FORTE PLUIE'],lightning:['🌩️','ORAGE'],
+  'lightning-rainy':['⛈️','ORAGE PLUVIEUX'],snowy:['❄️','NEIGE'],'snowy-rainy':['🌨️','NEIGE / PLUIE'],
+  fog:['🌫️','BROUILLARD'],hail:['🌨️','GRÊLE'],windy:['💨','VENTEUX'],'windy-variant':['💨','VENTEUX'],
+  exceptional:['⚠️','EXCEPTIONNEL']};
+const MOON={new_moon:['🌑','Nouvelle lune'],waxing_crescent:['🌒','Premier croissant'],
+  first_quarter:['🌓','Premier quartier'],waxing_gibbous:['🌔','Gibbeuse croissante'],
+  full_moon:['🌕','Pleine lune'],waning_gibbous:['🌖','Gibbeuse décroissante'],
+  last_quarter:['🌗','Dernier quartier'],waning_crescent:['🌘','Dernier croissant']};
+
+function render(){
+  /* Azimut / élévation */
+  const az=num(CFG.AZ), el=num(CFG.EL);
+  gid('az').textContent=az==null?'--':Math.round(az);
+  gid('az-c').textContent=az==null?'–':CARD[Math.round(((az%360)+360)%360/45)%8];
+  gid('el').textContent=el==null?'--':Math.round(el);
+  gid('el-c').textContent=el==null?'–':(el<0?"SOUS L'HORIZON":el<15?'BAS':el<45?'MOYEN':'HAUT');
+
+  /* Soleil sur la trajectoire : x = azimut 60°→300°, y = élévation 0→70° */
+  const sun=gid('sun'), night=gid('night');
+  if(az!=null&&el!=null&&el>0){
+    const x=60+Math.max(0,Math.min(1,(az-60)/240))*680;
+    const y=220-Math.max(0,Math.min(1,el/70))*250;
+    sun.setAttribute('transform','translate('+x.toFixed(0)+','+Math.max(20,y).toFixed(0)+')');
+    sun.setAttribute('opacity','1');
+    gid('sun-lbl').textContent=Math.round(el)+'°';
+    night.setAttribute('opacity','0');
+  }else{
+    sun.setAttribute('opacity','0');
+    night.setAttribute('opacity',el==null?'0':'1');
+  }
+
+  /* Solcast */
+  const pic=num(CFG.PIC), tot=num(CFG.TOT);
+  gid('pic').textContent=pic==null?'--':pic.toFixed(1);
+  gid('pic-u').textContent=attr(CFG.PIC,'unit_of_measurement')||'kW';
+  gid('tot').textContent=tot==null?'--':tot.toFixed(1);
+  const sc=gid('solcast');
+  if(pic!=null||tot!=null){sc.textContent='✓ SOLCAST ACTIF';sc.className='';}
+  else{sc.textContent='… SOLCAST';sc.className='off';}
+
+  /* Condition météo */
+  const w=HA[CFG.WEATHER];
+  if(w){
+    const c=COND[w.state]||['🌡️',String(w.state).toUpperCase()];
+    gid('w-i').textContent=c[0]; gid('w-t').textContent=c[1];
+    gid('w-temp').textContent=w.attributes&&w.attributes.temperature!=null?w.attributes.temperature.toFixed(1):'--';
+    gid('w-hum').textContent=w.attributes&&w.attributes.humidity!=null?Math.round(w.attributes.humidity):'--';
+  }
+
+  /* Vent */
+  const wd=num(CFG.WIND);
+  gid('wd').textContent=wd==null?'--':Math.round(wd);
+  gid('wd-c').textContent=wd==null?'–':(wd<10?'CALME':wd<30?'MODÉRÉ':wd<60?'FORT':'VIOLENT');
+
+  /* Lune */
+  const m=st(CFG.MOON);
+  const mm=MOON[m]||['🌙',m||'--'];
+  gid('m-i').textContent=mm[0]; gid('m-t').textContent=mm[1];
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

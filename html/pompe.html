@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>Pompe RPD</title>
+
+  <style>
+
+    :root {
+
+      --bg: #1c2431;
+
+      --panel: #1c2431;
+
+      --border: #3c4a5e;
+
+      --txt: #eef3fa;
+
+      --dim: #aebdd0;
+
+      --dim2: #55677f;
+
+      --accent: #4da3ff;
+
+      --water: #38bdf8;
+
+      --green: #3fae64;
+
+      --amber: #f0b429;
+
+      --red: #ff6b62;
+
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+
+    
+
+    html, body { 
+
+      background: var(--panel) !important; 
+
+      color: var(--txt); 
+
+      width: 100%; 
+
+      height: 100%; 
+
+      overflow: hidden; /* Supprime complètement tout scroll global */
+
+    }
+
+    .dash { 
+
+      width: 100%; 
+
+      height: 100vh; 
+
+      max-height: 100vh;
+
+      background: var(--panel); 
+
+      padding: 14px; 
+
+      display: flex; 
+
+      flex-direction: column; 
+
+      gap: 12px; 
+
+      overflow: hidden; /* Sécurité anti-scroll */
+
+    }
+
+    .hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; }
+
+    .title-grp { display: flex; align-items: center; gap: 12px; }
+
+    h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
+
+    .sub { font-size: 11px; color: var(--dim); margin-top: 2px; font-family: monospace; }
+
+    
+
+    .st-badge { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
+
+    .st-badge.off { border-color: var(--border); color: var(--dim); }
+
+    .st-badge.on { border-color: rgba(56,189,248,0.4); color: var(--water); background: rgba(56,189,248,0.1); }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .dot.g { background: var(--dim2); }
+
+    .dot.b { background: var(--water); box-shadow: 0 0 8px var(--water); animation: pd 1.4s infinite ease-in-out; }
+
+    @keyframes pd { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .clk { font-family: monospace; font-size: 16px; color: var(--dim); }
+
+    .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 14px; flex: 1; min-height: 0; }
+
+    /* ═══ Écran bas (tablette 10" paysage, ~800px de haut) : masquer le secondaire ═══ */
+    @media (max-height: 860px){
+      .dash { padding: 12px 18px; gap: 8px; }
+      .consum, .cost-box { display: none !important; }
+      .metrics { grid-template-columns: repeat(4, 1fr); }
+      .prog-box { padding: 10px 14px; }
+    }
+    @media (max-height: 680px){
+      .tl { display: none !important; }
+      .metric-val { font-size: 20px; }
+    }
+    /* ═══════════ ADAPTATION MULTI-SUPPORT ═══════════ */
+    @media (max-width: 1000px){
+      .main-grid { grid-template-columns: 200px 1fr; gap: 12px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .metric-val { font-size: 22px; }
+    }
+    @media (max-width: 700px){
+      .dash { padding: 10px 12px; gap: 8px; }
+      .main-grid { grid-template-columns: 150px 1fr; gap: 12px; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .card { padding: 7px 10px; }
+      .metric-val { font-size: 20px; }
+      .consum, .cost-box, .tl { display: none !important; }
+      #m-curr, #m-volt, #m-flow { display: none; }
+    }
+    @media (max-width: 430px){
+      .main-grid { grid-template-columns: 120px 1fr; }
+      h1 { font-size: 16px; }
+    }
+
+    
+
+    .left-col { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+
+    .mach-wrap { 
+
+      flex: 1; 
+
+      border: 2px solid var(--border); 
+
+      border-radius: 10px; 
+
+      background: radial-gradient(circle at center, #141b26 0%, #090d13 100%); 
+
+      display: flex; 
+
+      justify-content: center; 
+
+      align-items: center; 
+
+      padding: 12px; 
+
+      overflow: hidden; 
+
+      min-height: 0;
+
+    }
+
+    .mach-wrap svg { width: 100%; height: auto; max-height: 100%; }
+
+    
+
+    .plaque { font-size: 11px; color: var(--dim); text-align: center; line-height: 1.4; flex-shrink: 0; }
+
+    .plaque b { color: var(--txt); }
+
+    
+
+    .pwr-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--green); color: white; transition: background 0.2s; font-size: 14px; letter-spacing: 0.5px; flex-shrink: 0; }
+
+    .pwr-btn:hover { background: #37995a; }
+
+    .pwr-btn.on { background: var(--red); }
+
+    .pwr-btn.on:hover { background: #e5544b; }
+
+    
+
+    .phase-lbl { text-align: center; font-size: 15px; font-weight: bold; color: var(--dim); padding: 8px; border-radius: 6px; width: 100%; border: 1px dashed var(--border); flex-shrink: 0; }
+
+    .phase-lbl.on { color: var(--water); background: rgba(56,189,248,0.05); border-color: rgba(56,189,248,0.25); }
+
+    .right-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
+
+    
+
+    .card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; position: relative; overflow: hidden; }
+
+    .card.large { grid-column: span 2; }
+
+    .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, transparent, var(--water), transparent); opacity:0; transition: opacity .4s; }
+
+    .card.on::before { opacity: 1; }
+
+    
+
+    .metric-lbl { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .metric-val { font-size: 26px; font-weight: 700; color: #fff; font-family: monospace; display: flex; align-items: baseline; gap: 2px; line-height: 1.2; }
+
+    .metric-val.blue { color: var(--water); }
+
+    .metric-val.dim { color: var(--dim2); }
+
+    .metric-unit { font-size: 14px; color: var(--dim); font-weight: normal; margin-left: 2px; }
+
+    
+
+    .prog-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; justify-content: center; }
+
+    .prog-hdr { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; }
+
+    .prog-bar-bg { height: 10px; background: var(--border); border-radius: 6px; overflow: hidden; width: 100%; }
+
+    .prog-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--water)); border-radius: 6px; transition: width 0.6s ease; }
+
+    
+
+    .sess-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    .sess-lbl { font-size: 10px; color: var(--dim); text-transform: uppercase; font-weight: 600; letter-spacing: .5px; }
+
+    .sess-val { font-size: 16px; font-weight: 700; font-family: monospace; color: #fff; margin-top: 2px; }
+
+    
+
+    .consum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
+
+    .consum-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 5px solid var(--dim2); border-radius: 8px; padding: 10px 14px; }
+
+    .consum-ico { font-size: 22px; line-height: 1; flex-shrink: 0; }
+
+    .consum-lbl { font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .consum-st { font-size: 15px; font-weight: 700; font-family: monospace; margin-top: 2px; color: #fff; }
+
+    .consum-item.ok { border-left-color: var(--green); }
+
+    .consum-item.ok .consum-st { color: var(--green); }
+
+    .consum-item.warn { border-left-color: var(--red); background: rgba(248,81,73,0.08); }
+
+    .consum-item.warn .consum-st { color: var(--red); }
+
+    .consum-item.unk .consum-st { color: var(--dim2); }
+
+    @media (max-width: 720px) { .consum { grid-template-columns: 1fr; } }
+
+    
+
+    .cost-box { border-top: 1px solid var(--border); padding-top: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; align-items: center; flex-shrink: 0; }
+
+    .cost-item { display: flex; flex-direction: column; gap: 2px; }
+
+    .cost-lbl { font-size: 11px; color: var(--dim); text-transform: uppercase; font-weight: 600; }
+
+    .cost-val { font-size: 18px; font-weight: bold; font-family: monospace; color: #fff; }
+
+    .cost-val.tot { color: #f5cf6f; font-size: 20px; }
+
+    
+
+    /* Animations */
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .impeller.run { transform-box: fill-box; transform-origin: center; animation: spin 0.3s linear infinite; }
+
+    .fan.run { transform-box: fill-box; transform-origin: center; animation: spin 0.5s linear infinite; }
+
+    @keyframes flowmove { to { stroke-dashoffset: -22; } }
+
+    .flow { stroke-dasharray: 7 6; opacity: 0; transition: opacity .4s; }
+
+    .flow.run { opacity: 1; animation: flowmove 0.5s linear infinite; }
+
+    @keyframes vib { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-0.5px,0.3px)} 75%{transform:translate(0.5px,-0.3px)} }
+
+    .pump-body.run { animation: vib 0.1s infinite linear; }
+
+    .needle { transition: transform 0.6s ease; }
+
+    @media (prefers-reduced-motion: reduce) { .impeller.run,.fan.run,.pump-body.run,.dot.b { animation: none; } }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="dash">
+
+  <div class="hdr">
+
+    <div class="title-grp">
+
+      <div>
+
+        <h1>POMPE</h1>
+
+        <div class="sub">Renson NPU100MP — switch.prise_pompe</div>
+
+      </div>
+
+      <div id="st-badge" class="st-badge off"><div id="sd" class="dot g"></div><span id="st">ARRÊT</span></div>
+
+    </div>
+
+    <div id="clk" class="clk">00:00:00</div>
+
+  </div>
+
+  <div class="main-grid">
+
+    <div class="left-col">
+
+      <div class="mach-wrap">
+
+        <svg viewBox="0 0 320 210" width="100%" height="100%">
+
+          <defs>
+
+            <linearGradient id="inox" x1="0" y1="0" x2="0" y2="1">
+
+              <stop offset="0%" stop-color="#5b6472"/><stop offset="45%" stop-color="#2c3442"/><stop offset="100%" stop-color="#161d28"/>
+
+            </linearGradient>
+
+            <linearGradient id="volute" x1="0" y1="0" x2="1" y2="1">
+
+              <stop offset="0%" stop-color="#475569"/><stop offset="100%" stop-color="#1e2632"/>
+
+            </linearGradient>
+
+            <linearGradient id="wat" x1="0" y1="0" x2="0" y2="1">
+
+              <stop offset="0%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#0369a1"/>
+
+            </linearGradient>
+
+          </defs>
+
+          <g id="pump-body" class="pump-body">
+
+            <!-- Socle -->
+
+            <rect x="70" y="176" width="200" height="12" rx="3" fill="#0f151e" stroke="#232d3f" stroke-width="1"/>
+
+            <rect x="90" y="170" width="18" height="8" fill="#1a2230"/>
+
+            <rect x="232" y="170" width="18" height="8" fill="#1a2230"/>
+
+            <!-- Tuyau aspiration -->
+
+            <rect x="80" y="150" width="20" height="30" rx="2" fill="#22303f" stroke="#2f3d4d" stroke-width="1"/>
+
+            <line class="flow" x1="90" y1="178" x2="90" y2="150" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+
+            <!-- Tuyau refoulement -->
+
+            <rect x="102" y="20" width="20" height="40" rx="2" fill="#22303f" stroke="#2f3d4d" stroke-width="1"/>
+
+            <line class="flow" x1="112" y1="58" x2="112" y2="20" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+
+            <!-- Corps de pompe -->
+
+            <circle cx="112" cy="112" r="46" fill="url(#volute)" stroke="#4a5770" stroke-width="1.5"/>
+
+            <circle cx="112" cy="112" r="46" fill="none" stroke="#0a0e15" stroke-width="1" transform="scale(1)"/>
+
+            <!-- Turbine -->
+
+            <g id="impeller" class="impeller">
+
+              <circle cx="112" cy="112" r="34" fill="#10161f" stroke="#2a3546" stroke-width="1"/>
+
+              <g fill="#5b6472">
+
+                <path d="M112,112 Q124,84 138,96 Q120,104 112,112 Z"/>
+
+                <path d="M112,112 Q140,124 128,138 Q120,120 112,112 Z"/>
+
+                <path d="M112,112 Q00,140 86,128 Q104,120 112,112 Z"/>
+
+                <path d="M112,112 Q84,100 96,86 Q104,104 112,112 Z"/>
+
+                <path d="M112,112 Q132,110 130,126 Q118,118 112,112 Z"/>
+
+                <path d="M112,112 Q92,114 94,98 Q106,106 112,112 Z"/>
+
+              </g>
+
+              <circle cx="112" cy="112" r="6" fill="#2c3442" stroke="#4a5770" stroke-width="1"/>
+
+            </g>
+
+            <!-- Manomètre -->
+
+            <circle cx="150" cy="76" r="13" fill="#0d121b" stroke="#3a4658" stroke-width="1.5"/>
+
+            <circle cx="150" cy="76" r="13" fill="none" stroke="#1a2230" stroke-width="3" stroke-dasharray="1 3"/>
+
+            <line id="gauge-needle" class="needle" x1="150" y1="76" x2="150" y2="66" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" transform="rotate(-120 150 76)"/>
+
+            <circle cx="150" cy="76" r="2" fill="#38bdf8"/>
+
+            <!-- Moteur -->
+
+            <rect x="158" y="82" width="118" height="60" rx="24" fill="url(#inox)" stroke="#4a5770" stroke-width="1.5"/>
+
+            <!-- Ailettes -->
+
+            <g stroke="#0d121b" stroke-width="1.4" opacity="0.6">
+
+              <line x1="176" y1="86" x2="176" y2="138"/><line x1="186" y1="86" x2="186" y2="138"/>
+
+              <line x1="196" y1="86" x2="196" y2="138"/><line x1="206" y1="86" x2="206" y2="138"/>
+
+              <line x1="216" y1="86" x2="216" y2="138"/><line x1="226" y1="86" x2="226" y2="138"/>
+
+              <line x1="236" y1="86" x2="236" y2="138"/><line x1="246" y1="86" x2="246" y2="138"/>
+
+            </g>
+
+            <!-- Boîtier -->
+
+            <rect x="196" y="66" width="42" height="18" rx="3" fill="#1a2230" stroke="#2f3d4d" stroke-width="1"/>
+
+            <circle id="motor-led" cx="217" cy="75" r="2.6" fill="#334155"/>
+
+            <!-- Ventilateur -->
+
+            <circle cx="284" cy="112" r="22" fill="#161d28" stroke="#3a4658" stroke-width="1.5"/>
+
+            <g id="fan" class="fan">
+
+              <g fill="#3a4658">
+
+                <path d="M284,112 L284,94 Q292,98 288,110 Z"/>
+
+                <path d="M284,112 L301,118 Q296,125 286,116 Z"/>
+
+                <path d="M284,112 L272,126 Q266,120 280,114 Z"/>
+
+                <path d="M284,112 L270,102 Q276,95 286,108 Z"/>
+
+                <path d="M284,112 L296,100 Q302,107 288,114 Z"/>
+
+              </g>
+
+              <circle cx="284" cy="112" r="4" fill="#4a5770"/>
+
+            </g>
+
+            <circle cx="284" cy="112" r="22" fill="none" stroke="#0d121b" stroke-width="1" stroke-dasharray="2 3"/>
+
+            <text x="200" y="116" fill="#aebdd0" font-family="monospace" font-size="8" font-weight="700" text-anchor="middle" letter-spacing="0.5">RENSON</text>
+
+            <text x="200" y="126" fill="#475569" font-family="monospace" font-size="6" text-anchor="middle">NPU100MP · 0.74kW</text>
+
+          </g>
+
+        </svg>
+
+      </div>
+
+      <div class="plaque">
+
+        <b>Renson NPU100MP</b> · 230 V · 0,74 kW · 4 A<br>Débit max <b>50 L/min</b> · HMT <b>50 m</b> · DN 1"
+
+      </div>
+
+      <div id="plbl" class="phase-lbl">ARRÊT</div>
+
+      <button id="pbtn" class="pwr-btn" onclick="togglePower()">▶ DÉMARRER</button>
+
+    </div>
+
+    <div class="right-col">
+
+      <div class="metrics">
+
+        <div class="card large" id="card-power">
+
+          <span class="metric-lbl">Puissance</span>
+
+          <div id="m-power" class="metric-val dim">0<span class="metric-unit">W</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Statut</span>
+
+          <div id="m-status" class="metric-val dim" style="font-size:20px;">Arrêt</div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Courant</span>
+
+          <div id="m-curr" class="metric-val dim">0.0<span class="metric-unit">A</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Tension</span>
+
+          <div id="m-volt" class="metric-val dim">--<span class="metric-unit">V</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Débit estimé</span>
+
+          <div id="m-flow" class="metric-val dim">0<span class="metric-unit">L/min</span></div>
+
+        </div>
+
+      </div>
+
+      <div class="prog-box">
+
+        <div class="prog-hdr">
+
+          <span style="color:var(--dim);">Charge moteur</span>
+
+          <span id="pwr-pct" style="color:var(--water); font-family:monospace;">0 %</span>
+
+        </div>
+
+        <div class="prog-bar-bg"><div id="pwr-fill" class="prog-bar-fill"></div></div>
+
+        <div class="sess-grid">
+
+          <div><div class="sess-lbl">Durée fonctionnement</div><div id="sess-dur" class="sess-val">--:--</div></div>
+
+          <div><div class="sess-lbl">Volume pompé</div><div id="sess-vol" class="sess-val">0 L</div></div>
+
+          <div><div class="sess-lbl">Énergie session</div><div id="sess-nrg" class="sess-val">0.00 kWh</div></div>
+
+          <div><div class="sess-lbl">Minuterie</div><div id="v-countdown" class="sess-val">—</div></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  
+
+  <div class="consum">
+
+    <div class="consum-item unk" id="cs-lock">
+
+      <div class="consum-ico">🔒</div>
+
+      <div><div class="consum-lbl">Sécurité enfant</div><div class="consum-st" id="cs-lock-st">—</div></div>
+
+    </div>
+
+    <div class="consum-item unk" id="cs-mem">
+
+      <div class="consum-ico">⚡</div>
+
+      <div><div class="consum-lbl">Mémoire coupure</div><div class="consum-st" id="cs-mem-st">—</div></div>
+
+    </div>
+
+    <div class="consum-item unk" id="cs-fw">
+
+      <div class="consum-ico">⬆️</div>
+
+      <div><div class="consum-lbl">Firmware</div><div class="consum-st" id="cs-fw-st">—</div></div>
+
+    </div>
+
+  </div>
+
+  
+
+  <div class="cost-box">
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Énergie totale</span>
+
+      <div id="m-nrg" class="cost-val">-- kWh</div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût session</span>
+
+      <div id="c-sess" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût / heure actuel</span>
+
+      <div id="c-hour" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item" style="text-align: right; border-left: 1px solid var(--border); padding-left: 20px;">
+
+      <span class="cost-lbl" style="color:var(--water)">Volume session</span>
+
+      <div id="c-tot" class="cost-val tot">0 L</div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const CFG = {
+
+  HA_URL:location.origin, /* local + Nabu Casa */
+
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+
+  SW:'switch.prise_pompe',
+
+  POWER:'sensor.prise_pompe_power',
+
+  CURRENT:'sensor.prise_pompe_current',
+
+  ENERGY:'sensor.prise_pompe_energy',
+
+  VOLTAGE:'sensor.prise_pompe_voltage',
+
+  COUNTDOWN:'number.prise_pompe_countdown',
+
+  CHILD_LOCK:'switch.prise_pompe_child_lock',
+
+  MEMORY:'select.prise_pompe_power_outage_memory',
+
+  FW:'update.prise_pompe',
+
+  NOM_W:740, NOM_FLOW:50, ON_W:40, KWH:0.1927,
+
+};
+
+let S={on:false,power:0,curr:0,volt:238,nrg:0,countdown:0,lock:'',mem:'',fw:'',
+
+       sess:false,sessStartE:0,sessStart:0,sessE:0,sessVol:0,lastT:0};
+
+let ws=null;
+
+const gid=id=>document.getElementById(id);
+
+function connectWS(){
+
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket');
+
+  let id=1;
+
+  ws.onmessage=ev=>{
+
+    const m=JSON.parse(ev.data);
+
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+
+    else if(m.type==='auth_ok'){ws.send(JSON.stringify({id:id++,type:'subscribe_events',event_type:'state_changed'}));ws.send(JSON.stringify({id:id++,type:'get_states'}));}
+
+    else if(m.type==='result'&&Array.isArray(m.result)){diagnose(m.result);m.result.forEach(ig);}
+
+    else if(m.type==='event'&&m.event?.event_type==='state_changed')ig(m.event.data.new_state);
+
+  };
+
+  ws.onclose=()=>setTimeout(connectWS,5000);ws.onerror=()=>ws.close();
+
+}
+
+function diagnose(states){
+
+  const cand=states.filter(x=>x.entity_id&&/prise_pompe|pompe/i.test(x.entity_id));
+
+  console.log('%c[Pompe] '+cand.length+' entités :','color:#38bdf8;font-weight:bold');
+
+  cand.forEach(x=>console.log('  '+x.entity_id+' = '+x.state));
+
+  const present=new Set(states.map(x=>x.entity_id));
+
+  const pick=(key,dc)=>{ if(present.has(CFG[key]))return; const m=cand.find(x=>x.attributes&&x.attributes.device_class===dc); if(m){CFG[key]=m.entity_id;console.log('%c[Pompe] '+key+' → '+m.entity_id,'color:#2ea44f;font-weight:bold');} };
+
+  pick('POWER','power');pick('ENERGY','energy');pick('CURRENT','current');pick('VOLTAGE','voltage');
+
+}
+
+function ig(s){
+
+  if(!s||!s.entity_id) return;
+
+  const v=parseFloat(s.state);
+
+  switch(s.entity_id){
+
+    case CFG.SW: S.on=(s.state==='on'); break;
+
+    case CFG.POWER: S.power=isNaN(v)?0:Math.max(0,v); break;
+
+    case CFG.CURRENT: S.curr=isNaN(v)?0:v; break;
+
+    case CFG.VOLTAGE: S.volt=isNaN(v)?S.volt:v; break;
+
+    case CFG.ENERGY: S.nrg=isNaN(v)?S.nrg:v; break;
+
+    case CFG.COUNTDOWN: S.countdown=isNaN(v)?0:v; break;
+
+    case CFG.CHILD_LOCK: S.lock=s.state; break;
+
+    case CFG.MEMORY: S.mem=s.state; break;
+
+    case CFG.FW: S.fw=s.state; break;
+
+    default: return;
+
+  }
+
+  render();
+
+}
+
+function togglePower(){
+
+  if(ws&&ws.readyState===1){
+
+    ws.send(JSON.stringify({id:99,type:'call_service',domain:'switch',service:S.on?'turn_off':'turn_on',service_data:{entity_id:CFG.SW}}));
+
+  }
+
+}
+
+function fmtDur(s){
+
+  if(!s||s<=0) return '--:--';
+
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60);
+
+  return h>0 ? h+'h'+String(m).padStart(2,'0') : String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+
+}
+
+function fmtVol(l){ return l>=1000 ? (l/1000).toFixed(2)+' m³' : Math.round(l)+' L'; }
+
+function render(){
+
+  const running = S.power > CFG.ON_W;
+
+  const now=Date.now();
+
+  if(running && !S.sess){ S.sess=true; S.sessStartE=S.nrg; S.sessStart=now; S.sessVol=0; S.lastT=now; }
+
+  if(!running && S.sess){ S.sess=false; }
+
+  const flow = running ? Math.min(CFG.NOM_FLOW, CFG.NOM_FLOW*S.power/CFG.NOM_W) : 0;
+
+  if(S.sess){
+
+    const dt=(now-S.lastT)/1000; S.lastT=now;
+
+    S.sessVol += flow*(dt/60);
+
+    S.sessE=Math.max(0,S.nrg-S.sessStartE);
+
+  }
+
+  const cls = running ? ' run' : '';
+
+  gid('impeller').className.baseVal='impeller'+cls;
+
+  gid('fan').className.baseVal='fan'+cls;
+
+  gid('pump-body').className.baseVal='pump-body'+cls;
+
+  document.querySelectorAll('.flow').forEach(f=>f.setAttribute('class','flow'+cls));
+
+  gid('motor-led').setAttribute('fill', running?'#38bdf8':'#334155');
+
+  const ang=-120+240*Math.min(1,S.power/CFG.NOM_W);
+
+  gid('gauge-needle').setAttribute('transform','rotate('+ang.toFixed(0)+' 150 76)');
+
+  const pb=gid('pbtn'); pb.textContent=S.on?'■ ARRÊTER':'▶ DÉMARRER'; pb.className='pwr-btn'+(S.on?' on':'');
+
+  const badge=gid('st-badge'),sd=gid('sd'),stx=gid('st'),pl=gid('plbl'),sEl=gid('m-status');
+
+  if(running){
+
+    badge.className='st-badge on'; sd.className='dot b'; stx.textContent='EN MARCHE';
+
+    pl.textContent='EN MARCHE'; pl.className='phase-lbl on';
+
+    sEl.textContent='En marche'; sEl.className='metric-val blue';
+
+  } else {
+
+    badge.className='st-badge off'; sd.className='dot g'; stx.textContent='ARRÊT';
+
+    pl.textContent=S.on?'EN VEILLE (prise ON)':'ARRÊT'; pl.className='phase-lbl';
+
+    sEl.textContent=S.on?'Veille':'Arrêt'; sEl.className='metric-val dim';
+
+  }
+
+  sEl.style.fontSize='20px';
+
+  gid('m-power').innerHTML=Math.round(S.power)+'<span class="metric-unit">W</span>';
+
+  gid('m-power').className='metric-val '+(running?'blue':'dim');
+
+  gid('card-power').className='card large'+(running?' on':'');
+
+  gid('m-curr').innerHTML=(S.curr||0).toFixed(1)+'<span class="metric-unit">A</span>';
+
+  gid('m-curr').className='metric-val '+(S.curr>0.1?'':'dim');
+
+  gid('m-volt').innerHTML=(S.volt>0?Math.round(S.volt):'--')+'<span class="metric-unit">V</span>';
+
+  gid('m-volt').className='metric-val '+(S.volt>0?'':'dim');
+
+  gid('m-flow').innerHTML=Math.round(flow)+'<span class="metric-unit">L/min</span>';
+
+  gid('m-flow').className='metric-val '+(flow>0?'blue':'dim');
+
+  const pct=Math.min(100,Math.round(S.power/CFG.NOM_W*100));
+
+  gid('pwr-fill').style.width=pct+'%'; gid('pwr-pct').textContent=pct+' %';
+
+  gid('sess-dur').textContent=S.sess?fmtDur((now-S.sessStart)/1000):'--:--';
+
+  gid('sess-vol').textContent=fmtVol(S.sessVol);
+
+  gid('sess-nrg').textContent=S.sessE.toFixed(2)+' kWh';
+
+  gid('v-countdown').textContent=S.countdown>0?fmtDur(S.countdown):'—';
+
+  const on=v=>String(v||'').toLowerCase()==='on';
+
+  const tile=(id,st,cls,txt)=>{const it=gid(id),e=gid(st);if(it&&e){it.className='consum-item '+cls;e.textContent=txt;}};
+
+  on(S.lock) ? tile('cs-lock','cs-lock-st','ok','Activée') : tile('cs-lock','cs-lock-st','unk','Désactivée');
+
+  const mem={'on':'Marche','off':'Arrêt','restore':'Restaurer'}[String(S.mem||'').toLowerCase()];
+
+  tile('cs-mem','cs-mem-st', mem?'ok':'unk', mem||'—');
+
+  on(S.fw) ? tile('cs-fw','cs-fw-st','warn','MAJ DISPO') : tile('cs-fw','cs-fw-st', S.fw?'ok':'unk', S.fw?'À jour':'—');
+
+  gid('m-nrg').textContent=(S.nrg>0?S.nrg.toFixed(2):'--')+' kWh';
+
+  gid('c-sess').textContent=(S.sessE*CFG.KWH).toFixed(2)+' €';
+
+  gid('c-hour').textContent=((S.power/1000)*CFG.KWH).toFixed(2)+' €';
+
+  gid('c-tot').textContent=fmtVol(S.sessVol);
+
+}
+
+function tick(){ const n=new Date(); gid('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':'); render(); }
+
+connectWS();
+
+setInterval(tick,1000);
+
+render();
+
+</script>
+
+</body>
+
+</html>

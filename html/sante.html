@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dossier santé</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62; --cyan:#22d3ee; --violet:#a5b4fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:ui-monospace,Consolas,"Segoe UI Mono",monospace;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;
+  overflow-y:auto;scrollbar-width:thin;padding:18px;gap:16px}
+
+#hdr{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#pic{width:76px;height:76px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);flex-shrink:0;background:var(--card2)}
+#who .n{font-size:26px;font-weight:800;letter-spacing:.08em}
+#who .s{font-size:13px;color:var(--dim);letter-spacing:.1em;margin-top:4px}
+#imcbox{border:1px solid var(--violet);border-radius:12px;padding:10px 16px;display:flex;gap:18px;align-items:center;background:rgba(165,180,252,.06)}
+#imcbox .l{font-size:12px;color:var(--dim);letter-spacing:.14em;font-weight:700}
+#imcbox .v{font-size:28px;font-weight:800;color:var(--violet)}
+#imcbox .c{font-size:15px;font-weight:800}
+#badges{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+.bd{border:1px solid var(--line);border-radius:10px;padding:8px 14px;text-align:center;min-width:86px}
+.bd .l{font-size:11px;color:var(--dim);letter-spacing:.12em;font-weight:700}
+.bd .v{font-size:20px;font-weight:800;margin-top:4px;color:var(--warn)}
+
+#mission{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+#mission .hd{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+#mission .t{font-size:14px;letter-spacing:.16em;font-weight:800;color:var(--warn)}
+#mission .w{font-size:clamp(30px,5vh,42px);font-weight:800;color:var(--bad)}
+#mission .w small{font-size:.45em;color:var(--dim)}
+#mission .lost{font-size:16px;color:var(--okl);font-weight:700}
+#wbar{height:14px;border-radius:7px;background:var(--card2);position:relative}
+#wfill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--ok),var(--warn),var(--bad));width:0%}
+#wmark{position:absolute;top:-4px;bottom:-4px;width:5px;background:#fff;border-radius:2px;left:0%}
+#wlbl{display:flex;justify-content:space-between;font-size:14px}
+#wlbl .a{color:var(--okl);font-weight:800} #wlbl .m{color:var(--warn);font-weight:700} #wlbl .b{color:var(--bad);font-weight:800}
+
+#cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.col h2{font-size:14px;letter-spacing:.16em;font-weight:800;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid rgba(60,74,94,.5);font-size:16px}
+.row:last-child{border-bottom:none}
+.row b{font-size:17px;white-space:nowrap}
+#foot{display:flex;justify-content:space-between;font-size:13px;color:var(--dim2);letter-spacing:.12em}
+#foot .sync{color:var(--okl);font-weight:800}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <img id="pic" alt="">
+    <div id="who"><div class="n" id="nm">--</div><div class="s" id="ref">DOSSIER SANTÉ · <span id="arch"></span></div></div>
+    <div id="imcbox">
+      <div><div class="l">IMC</div><div class="v" id="imc">--</div></div>
+      <div><div class="l">CORPULENCE</div><div class="c" id="corp">--</div></div>
+    </div>
+    <div id="badges">
+      <div class="bd"><div class="l">👣 PAS</div><div class="v" id="steps">--</div></div>
+      <div class="bd"><div class="l">🔥 CALORIES</div><div class="v" id="cal">--</div></div>
+      <div class="bd"><div class="l">❤ BPM</div><div class="v" id="bpm">--</div></div>
+    </div>
+  </div>
+
+  <div id="mission">
+    <div class="hd">
+      <span class="t">🎯 MISSION PERTE DE POIDS</span>
+      <span><span class="w"><span id="wv">--</span> <small>kg</small></span>
+      <span class="lost" id="wl"></span></span>
+    </div>
+    <div id="wbar"><div id="wfill"></div><div id="wmark"></div></div>
+    <div id="wlbl">
+      <span class="a">✓ OBJECTIF <span id="goal">--</span> kg</span>
+      <span class="m" id="rest">encore -- kg à perdre</span>
+      <span class="b">DÉPART <span id="start">--</span> kg</span>
+    </div>
+  </div>
+
+  <div id="cols">
+    <div class="col"><h2 style="color:var(--violet)">💪 COMPOSITION</h2><div id="c-comp"></div></div>
+    <div class="col"><h2 style="color:var(--cyan)">🏃 ACTIVITÉ</h2><div id="c-act"></div></div>
+    <div class="col"><h2 style="color:var(--okl)">🩺 SANTÉ</h2><div id="c-sante"></div></div>
+  </div>
+
+  <div id="foot"><span>SOURCE : WITHINGS · HOME ASSISTANT</span><span class="sync">● SYNC LIVE</span></div>
+</div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  P:{
+    patrick:{
+      name:'Patrick', img:'/local/images/patrick.png', arch:'N° #1967',
+      weight:'sensor.withings_poids_patrick', start:166, goal:120,
+      imc:'sensor.imc_patrick', corp:'sensor.corpulence_patrick',
+      steps:'sensor.withings_steps_today', cal:'sensor.withings_total_calories_burnt_today',
+      bpm:'sensor.withings_heart_pulse',
+      comp:[
+        ['Masse musculaire','sensor.withings_masse_musculaire',' kg',1,'var(--okl)'],
+        ['Masse osseuse','sensor.withings_bone_mass',' kg',1,'var(--okl)'],
+        ['Hydratation','sensor.withings_hydration',' %',1,'var(--cyan)'],
+        ['Taux de graisse','sensor.withings_taux_de_graisse',' %',1,'var(--bad)']
+      ],
+      act:[
+        ['Rythme cardiaque','sensor.withings_heart_pulse',' bpm',0,'var(--bad)'],
+        ['Perte poids','sensor.perte_totale_de_poids_patrick',' kg',1,'var(--okl)'],
+        ['Différence','sensor.difference_poids_patrick',' kg',1,'var(--cyan)']
+      ],
+      sante:[
+        ['IMC','sensor.imc_patrick','',1,'var(--warn)'],
+        ['Graisse viscérale','sensor.withings_visceral_fat_index','',1,'var(--okl)'],
+        ['Masse grasse','sensor.withings_fat_mass',' kg',1,'var(--bad)'],
+        ['Masse maigre','sensor.withings_fat_free_mass',' kg',1,'var(--okl)']
+      ]
+    },
+    sandra:{
+      name:'Sandra', img:'/local/images/sandra.png', arch:'N° #1971',
+      weight:'sensor.withings_poids_sandra', start:83, goal:60,
+      imc:'sensor.imc_sandra', corp:'sensor.corpulence_sandra',
+      steps:'sensor.chambre_parents_withings_steps_today',
+      cal:'sensor.chambre_parents_withings_active_calories_burnt_today',
+      bpm:'sensor.withings_heart_pulse_2',
+      comp:[
+        ['Masse musculaire','sensor.withings_masse_musculaire_2',' kg',1,'var(--okl)'],
+        ['Masse osseuse','sensor.withings_bone_mass_2',' kg',1,'var(--okl)'],
+        ['Hydratation','sensor.withings_hydration_2',' %',1,'var(--cyan)'],
+        ['Taux de graisse','sensor.withings_taux_de_graisse_2',' %',1,'var(--bad)']
+      ],
+      act:[
+        ['Rythme cardiaque','sensor.withings_heart_pulse_2',' bpm',0,'var(--bad)'],
+        ['Perte de poids','sensor.perte_totale_de_poids_sandra',' kg',1,'var(--okl)'],
+        ['Différence','sensor.difference_poids_sandra',' kg',1,'var(--cyan)']
+      ],
+      sante:[
+        ['IMC','sensor.imc_sandra','',1,'var(--warn)'],
+        ['Graisse viscérale','sensor.withings_visceral_fat_index_2','',1,'var(--okl)'],
+        ['Masse grasse','sensor.withings_fat_mass_2',' kg',1,'var(--bad)'],
+        ['Masse maigre','sensor.withings_fat_free_mass_2',' kg',1,'var(--okl)']
+      ]
+    }
+  }
+};
+
+const q=new URLSearchParams(location.search);
+const P=CFG.P[(q.get('p')||'patrick').toLowerCase()]||CFG.P.patrick;
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const st=e=>HA[e]?HA[e].state:null;
+const fr=(v,d)=>v==null?'--':v.toFixed(d).replace('.',',');
+
+gid('nm').textContent=P.name; gid('arch').textContent=P.arch;
+gid('pic').src=P.img; gid('pic').alt=P.name;
+gid('goal').textContent=P.goal; gid('start').textContent=P.start;
+document.title='Dossier santé — '+P.name;
+
+function rows(id,list){
+  gid(id).innerHTML=list.map(([l,,u],i)=>
+    `<div class="row"><span>${l}</span><b id="${id}-${i}">--${u}</b></div>`).join('');
+}
+rows('c-comp',P.comp); rows('c-act',P.act); rows('c-sante',P.sante);
+
+function fillRows(id,list){
+  list.forEach(([,e,u,d,col],i)=>{
+    const el=gid(id+'-'+i), v=num(e);
+    el.textContent=(v==null?'--':fr(v,d))+u;
+    el.style.color=v==null?'var(--dim2)':col;
+  });
+}
+
+function render(){
+  const w=num(P.weight);
+  gid('wv').textContent=fr(w,1);
+  const lost=w==null?null:P.start-w;
+  gid('wl').textContent=lost==null?'':' − '+fr(lost,1)+' kg perdus';
+  const rest=w==null?null:Math.max(0,w-P.goal);
+  gid('rest').textContent=rest==null?'encore -- kg à perdre':
+    (rest<=0?'🎉 OBJECTIF ATTEINT !':'encore '+fr(rest,1)+' kg à perdre');
+  const span=P.start-P.goal;
+  const pos=w==null?0:Math.max(0,Math.min(100,(w-P.goal)/span*100));
+  gid('wfill').style.width=pos+'%';
+  gid('wmark').style.left='calc('+pos+'% - 2px)';
+
+  gid('imc').textContent=fr(num(P.imc),1);
+  const c=st(P.corp);
+  const ce=gid('corp');
+  ce.textContent=c&&c!=='unknown'&&c!=='unavailable'?c.toUpperCase():'--';
+  ce.style.color=/normal/i.test(c||'')?'var(--okl)':/surpoids|classe i\b/i.test(c||'')?'var(--warn)':'var(--bad)';
+
+  const stp=num(P.steps), cal=num(P.cal), bpm=num(P.bpm);
+  gid('steps').textContent=stp==null?'--':Math.round(stp).toLocaleString('fr-FR');
+  gid('cal').textContent=cal==null?'--':Math.round(cal);
+  gid('bpm').textContent=bpm==null?'--':Math.round(bpm);
+
+  fillRows('c-comp',P.comp); fillRows('c-act',P.act); fillRows('c-sante',P.sante);
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

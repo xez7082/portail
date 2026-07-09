@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jardin — Cuves IBC</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62; --violet:#a5b4fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;overflow-y:auto;scrollbar-width:thin;padding:18px;
+  display:grid;grid-template-columns:minmax(280px,44%) 1fr;gap:18px}
+@media(max-width:820px){#app{grid-template-columns:1fr}}
+
+/* ── Cuve ── */
+#tankbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+  display:flex;flex-direction:column;gap:10px;min-height:0}
+#tanksvg{flex:1;width:100%;min-height:320px}
+#tankfoot{display:flex;justify-content:space-between;font-size:15px;align-items:center;flex-wrap:wrap;gap:8px}
+#alert{font-size:16px;font-weight:800;letter-spacing:.08em;color:var(--dim2)}
+#alert.on{color:var(--bad);animation:bl 1.6s infinite}
+@keyframes bl{50%{opacity:.4}}
+@media (prefers-reduced-motion:reduce){#alert.on{animation:none}}
+#cap{color:var(--dim)}
+#meta{display:flex;justify-content:space-between;font-size:15px;color:var(--dim);flex-wrap:gap:8px}
+#meta b{color:var(--txt)}
+
+/* ── Colonne droite ── */
+#right{display:flex;flex-direction:column;gap:14px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.tl{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  display:flex;gap:12px;align-items:center}
+.tl .ic{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;flex-shrink:0}
+.tl .l{font-size:14px;color:var(--dim)}
+.tl .v{font-size:24px;font-weight:800;margin-top:2px}
+.tl .x{margin-left:auto;font-size:14px;color:var(--dim)}
+h2{font-size:14px;letter-spacing:.16em;font-weight:800;color:var(--dim);margin-top:4px}
+.t3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.tt{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;text-align:right}
+.tt .l{font-size:14px;color:var(--dim)}
+.tt .v{font-size:26px;font-weight:800;margin-top:4px}
+
+.cmd{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;min-height:64px}
+.cmd .n{font-size:17px;font-weight:700}
+.cmd .p{font-size:14px;color:var(--dim)}
+.cbtn{margin-left:auto;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;
+  border:2px solid var(--line);background:var(--card2);color:var(--dim);border-radius:10px;
+  padding:12px 18px;min-height:52px;min-width:52px}
+.cbtn:hover{border-color:var(--accent);color:var(--accent2)}
+.cbtn.on{background:#26364d;border-color:var(--accent);color:var(--accent2)}
+.cbtn+.cbtn{margin-left:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="tankbox">
+    <svg id="tanksvg" viewBox="0 0 340 420" preserveAspectRatio="xMidYMid meet">
+      <!-- échelle -->
+      <g font-family="ui-monospace,Consolas,monospace" font-size="13" fill="#aebdd0" text-anchor="end">
+        <text x="42" y="34">100%</text><text x="42" y="127">75%</text>
+        <text x="42" y="220">50%</text><text x="42" y="313">25%</text><text x="42" y="406">0%</text>
+      </g>
+      <line x1="50" y1="30" x2="50" y2="402" stroke="#55677f" stroke-width="2"/>
+      <g stroke="#55677f" stroke-width="2">
+        <line x1="50" y1="30" x2="58" y2="30"/><line x1="50" y1="123" x2="58" y2="123"/>
+        <line x1="50" y1="216" x2="58" y2="216"/><line x1="50" y1="309" x2="58" y2="309"/>
+        <line x1="50" y1="402" x2="58" y2="402"/>
+      </g>
+      <ellipse id="mark" cx="50" cy="402" rx="9" ry="6" fill="#4da3ff"/>
+      <!-- cuve -->
+      <rect x="70" y="26" width="256" height="380" rx="18" fill="var(--card2)" stroke="var(--line)" stroke-width="2.5"/>
+      <clipPath id="tc"><rect x="76" y="32" width="244" height="368" rx="13"/></clipPath>
+      <g clip-path="url(#tc)">
+        <rect id="water" x="76" y="400" width="244" height="0" fill="url(#wg)"/>
+        <path id="wave" d="" fill="#a8d1ff" opacity=".5"/>
+      </g>
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#a8d1ff"/><stop offset="100%" stop-color="#2f74c0"/>
+        </linearGradient>
+      </defs>
+      <text id="pct" x="198" y="200" text-anchor="middle" font-size="64" font-weight="800" fill="#fff"
+        style="text-shadow:0 0 18px rgba(168,209,255,.6)">--%</text>
+      <text id="lit" x="198" y="245" text-anchor="middle" font-size="26" fill="var(--txt)">-- L</text>
+    </svg>
+    <div id="tankfoot">
+      <span id="alert">CUVE OK</span>
+      <span id="cap">Capacité : 2 000 L</span>
+    </div>
+    <div id="meta">
+      <span>📏 Profondeur : <b id="depth">-- m</b></span>
+      <span>📡 Capteur : <b id="sst">--</b></span>
+    </div>
+  </div>
+
+  <div id="right">
+    <div class="grid2">
+      <div class="tl"><div class="ic" style="background:rgba(165,180,252,.15)">🌊</div>
+        <div><div class="l">Volume mesuré</div><div class="v" id="vol">-- L</div></div>
+        <div class="x">Niveau : <b id="niv">--%</b></div></div>
+      <div class="tl"><div class="ic" style="background:rgba(240,180,41,.15)">☀️</div>
+        <div><div class="l">Beem IBC</div><div class="v" id="beemibc">--</div></div></div>
+      <div class="tl"><div class="ic" style="background:rgba(77,163,255,.15)">🌧️</div>
+        <div><div class="l">Précipitations</div><div class="v" id="rain">--</div></div>
+        <div class="x">mm</div></div>
+      <div class="tl"><div class="ic" style="background:rgba(249,115,22,.15)">🌡️</div>
+        <div><div class="l">Temp. extérieure</div><div class="v" id="ext">--</div></div>
+        <div class="x">°C</div></div>
+    </div>
+
+    <h2>SUIVI TEMPÉRATURES</h2>
+    <div class="t3">
+      <div class="tt"><div class="l">Cabane</div><div class="v" style="color:var(--warn)" id="tcab">--°C</div></div>
+      <div class="tt"><div class="l">Min annuel</div><div class="v" style="color:var(--accent2)" id="tmin">--°C</div></div>
+      <div class="tt"><div class="l">Max annuel</div><div class="v" style="color:var(--bad)" id="tmax">--°C</div></div>
+    </div>
+
+    <h2>COMMANDES &amp; ÉQUIPEMENTS</h2>
+    <div class="cmd">
+      <span style="font-size:22px">☀️</span>
+      <span class="n">Beem Maison</span>
+      <button class="cbtn" id="bm" onclick="toggleBeem()">--</button>
+    </div>
+    <div class="cmd">
+      <span style="font-size:22px">🪟</span>
+      <span class="n">Store Terrasse</span>
+      <span class="p" id="cpos">(--%)</span>
+      <button class="cbtn" style="margin-left:auto" onclick="cover('open_cover')" aria-label="Ouvrir">↑</button>
+      <button class="cbtn" onclick="cover('stop_cover')" aria-label="Stop">■</button>
+      <button class="cbtn" onclick="cover('close_cover')" aria-label="Fermer">↓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  LEVEL:'sensor.niveau_eau_pourcentage_2',
+  VOLUME:'sensor.volume_cuve_litres_2',
+  BEEM_IBC:'switch.ibc_beem_l2',
+  RAIN:'sensor.sainte_croix_en_plaine_daily_precipitation',
+  EXT:'sensor.sainte_croix_en_plaine_temperature',
+  DEPTH:'sensor.cuve_ibc_liquid_depth',
+  SENSOR_ST:'sensor.cuve_ibc_liquid_state',
+  ALERT:'binary_sensor.alerte_cuve',
+  T_CAB:'sensor.tdeg_cabane_temperature',
+  T_MIN:'input_number.temp_min_annee',
+  T_MAX:'input_number.temp_max_annee',
+  BEEM_MAISON:'switch.beem_maison',
+  COVER:'cover.store_terrasse',
+  CAPACITY:2000,
+  /* true  = litres calculés depuis le niveau (% × capacité) — toujours cohérent
+     false = litres lus depuis le capteur VOLUME */
+  VOLUME_FROM_LEVEL:true
+};
+
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const st=e=>HA[e]?HA[e].state:null;
+const fr=(v,d)=>v==null?'--':v.toFixed(d).replace('.',',');
+
+function call(domain,service,data){
+  if(!ws||ws.readyState!==1)return;
+  ws.send(JSON.stringify({id:msgId++,type:'call_service',domain,service,service_data:data}));
+}
+function toggleBeem(){ call('switch','toggle',{entity_id:CFG.BEEM_MAISON}); }
+function cover(svc){ call('cover',svc,{entity_id:CFG.COVER}); }
+
+function render(){
+  const lvl=num(CFG.LEVEL);
+  const volRaw=num(CFG.VOLUME);
+  const vol=CFG.VOLUME_FROM_LEVEL
+    ? (lvl==null?null:lvl/100*CFG.CAPACITY)
+    : volRaw;
+
+  /* Cuve */
+  const p=lvl==null?0:Math.max(0,Math.min(100,lvl));
+  const h=p/100*368, y=400-h;
+  const w=gid('water'); w.setAttribute('y',y); w.setAttribute('height',h);
+  gid('wave').setAttribute('d',p>0?`M76 ${y} q30 -7 61 0 t61 0 t61 0 t61 0 v8 h-244 Z`:'');
+  gid('mark').setAttribute('cy',402-p/100*372);
+  gid('pct').textContent=lvl==null?'--%':Math.round(lvl)+'%';
+  gid('lit').textContent=vol==null?'-- L':Math.round(vol)+' L';
+  gid('vol').textContent=vol==null?'-- L':Math.round(vol)+' L';
+  gid('niv').textContent=lvl==null?'--%':Math.round(lvl)+'%';
+
+  const al=st(CFG.ALERT), ae=gid('alert');
+  if(al==='on'){ae.textContent='⚠ ALERTE CUVE';ae.className='on';}
+  else{ae.textContent='CUVE OK';ae.className='';}
+
+  const d=num(CFG.DEPTH);
+  gid('depth').textContent=d==null?'-- m':fr(d,2)+' m';
+  gid('sst').textContent=st(CFG.SENSOR_ST)||'--';
+
+  /* Tuiles droite */
+  const bi=st(CFG.BEEM_IBC), be=gid('beemibc');
+  be.textContent=bi==null?'--':bi==='on'?'ACTIF':'ÉTEINT';
+  be.style.color=bi==='on'?'var(--okl)':'var(--dim2)';
+  gid('rain').textContent=fr(num(CFG.RAIN),1);
+  gid('ext').textContent=fr(num(CFG.EXT),1);
+  gid('tcab').textContent=fr(num(CFG.T_CAB),1)+'°C';
+  gid('tmin').textContent=fr(num(CFG.T_MIN),1)+'°C';
+  gid('tmax').textContent=fr(num(CFG.T_MAX),1)+'°C';
+
+  /* Commandes */
+  const bm=st(CFG.BEEM_MAISON), bmb=gid('bm');
+  bmb.textContent=bm==null?'--':bm==='on'?'Allumé':'Éteint';
+  bmb.className='cbtn'+(bm==='on'?' on':'');
+  const cv=HA[CFG.COVER];
+  const pos=cv&&cv.attributes?cv.attributes.current_position:null;
+  gid('cpos').textContent='('+(pos==null?'--':Math.round(pos))+'%)';
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

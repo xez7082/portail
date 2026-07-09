@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prix SP98 depuis 2022</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root{
+            --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+            --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+            --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62;
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+            font-family:ui-monospace,Consolas,"Segoe UI Mono",monospace;overflow:hidden}
+        #app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column;
+            overflow:hidden;padding:18px;gap:14px}
+        h1{font-size:clamp(15px,2.2vh,20px);letter-spacing:.2em;color:var(--accent2);font-weight:800;text-align:center;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;gap:10px}
+        h1 i{color:var(--accent);font-size:.9em}
+
+        .extremes{display:flex;gap:12px;flex-shrink:0;flex-wrap:wrap}
+        .box{flex:1;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px;
+            display:flex;flex-direction:column;gap:2px}
+        .box.low{border-left:3px solid var(--ok)}
+        .box.high{border-left:3px solid var(--bad)}
+        .box .l{font-size:11px;color:var(--dim);letter-spacing:.14em;font-weight:700;text-transform:uppercase;
+            display:flex;align-items:center;gap:6px}
+        .box.low .l i{color:var(--okl)}
+        .box.high .l i{color:var(--bad)}
+        .box .v{font-size:clamp(20px,2.8vh,28px);font-weight:800;margin-top:2px}
+        .box.low .v{color:var(--okl)}
+        .box.high .v{color:var(--bad)}
+        .box .s{font-size:12px;color:var(--dim2);margin-top:1px;letter-spacing:.08em}
+
+        .add-row{display:flex;gap:10px;align-items:flex-end;flex-shrink:0;flex-wrap:wrap}
+        .add-row label{display:block;font-size:10px;color:var(--dim);margin-bottom:4px;
+            letter-spacing:.14em;font-weight:700;text-transform:uppercase}
+        .add-row input{background:var(--card2);border:1px solid var(--line);color:var(--txt);
+            padding:8px 12px;border-radius:10px;font-size:14px;font-family:inherit;transition:border-color .2s}
+        .add-row input:focus{outline:none;border-color:var(--accent)}
+        .add-row input[type="date"]{width:160px}
+        .add-row input[type="number"]{width:130px}
+        .add-row button{background:var(--card2);border:1px solid var(--accent);color:var(--accent2);
+            padding:8px 20px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;
+            font-family:inherit;white-space:nowrap;transition:all .2s;letter-spacing:.06em;
+            display:flex;align-items:center;gap:6px}
+        .add-row button:hover{background:var(--accent);color:var(--bg)}
+
+        .chart-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
+            padding:16px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+        .chart-box canvas{flex:1;min-height:0}
+
+        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+            background:var(--card);border:1px solid var(--line);color:var(--txt);
+            padding:10px 22px;border-radius:10px;font-size:13px;opacity:0;transition:all .3s;
+            z-index:99;pointer-events:none;display:flex;align-items:center;gap:8px;
+            letter-spacing:.04em;font-weight:600}
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+        .toast i{color:var(--okl)}
+
+        @media(max-width:600px){
+            #app{padding:12px;gap:10px}
+            .extremes{flex-direction:column;gap:8px}
+            .add-row input[type="date"]{width:130px}
+            .add-row input[type="number"]{width:100px}
+            .chart-box{padding:10px}
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+
+    <h1><i class="fas fa-gas-pump"></i> PRIX DU SP98 EN FRANCE</h1>
+
+    <div class="extremes">
+        <div class="box low">
+            <div class="l"><i class="fas fa-arrow-down"></i> Prix le plus bas</div>
+            <div class="v" id="minPrice">—</div>
+            <div class="s" id="minDate"></div>
+        </div>
+        <div class="box high">
+            <div class="l"><i class="fas fa-arrow-up"></i> Prix le plus haut</div>
+            <div class="v" id="maxPrice">—</div>
+            <div class="s" id="maxDate"></div>
+        </div>
+    </div>
+
+    <div class="add-row">
+        <div>
+            <label>Date</label>
+            <input type="date" id="inDate">
+        </div>
+        <div>
+            <label>Prix (€/L)</label>
+            <input type="number" id="inPrice" step="0.001" placeholder="1.980">
+        </div>
+        <button onclick="ajouter()"><i class="fas fa-plus"></i> AJOUTER</button>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="chart"></canvas>
+    </div>
+
+</div>
+
+<div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg"></span></div>
+
+<script>
+    const M=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+
+    // Historique SP98 — moyennes nationales jan 2022 à fév 2025
+    // + tes pleins réels de mar 2025 à jun 2026
+    const base=[
+        ['Jan 2022',1.710],['Fév 2022',1.820],['Mar 2022',2.050],
+        ['Avr 2022',1.930],['Mai 2022',1.900],['Jun 2022',2.120],
+        ['Jul 2022',2.130],['Aoû 2022',1.990],['Sep 2022',1.640],
+        ['Oct 2022',1.620],['Nov 2022',1.660],['Déc 2022',1.700],
+        ['Jan 2023',1.840],['Fév 2023',1.890],['Mar 2023',1.970],
+        ['Avr 2023',2.010],['Mai 2023',1.950],['Jun 2023',1.970],
+        ['Jul 2023',2.030],['Aoû 2023',2.020],['Sep 2023',2.040],
+        ['Oct 2023',2.000],['Nov 2023',1.930],['Déc 2023',1.910],
+        ['Jan 2024',1.930],['Fév 2024',1.950],['Mar 2024',1.990],
+        ['Avr 2024',2.020],['Mai 2024',1.970],['Jun 2024',1.960],
+        ['Jul 2024',1.950],['Aoû 2024',1.870],['Sep 2024',1.740],
+        ['Oct 2024',1.690],['Nov 2024',1.700],['Déc 2024',1.690],
+        ['Jan 2025',1.720],['Fév 2025',1.740],
+        // Tes pleins réels
+        ['Mar 2025',1.695],['Avr 2025',1.647],['Mai 2025',1.759],
+        ['Jun 2025',1.695],['Jul 2025',1.675],['Aoû 2025',1.665],
+        ['Sep 2025',1.695],['Oct 2025',1.665],['Nov 2025',1.715],
+        ['Déc 2025',1.669],
+        ['Jan 2026',1.688],['Fév 2026',1.769],['Mar 2026',1.926],
+        ['Avr 2026',1.953],['Mai 2026',2.045],['Jun 2026',1.975]
+    ];
+
+    let userPrices=JSON.parse(localStorage.getItem('sp98_user')||'[]');
+    let chart;
+
+    function getAll(){
+        const all=base.map(d=>({label:d[0],prix:d[1]}));
+        userPrices.forEach(u=>{
+            const dt=new Date(u.date);
+            const label=M[dt.getMonth()]+' '+dt.getFullYear();
+            const ex=all.find(a=>a.label===label);
+            if(ex)ex.prix=u.prix;else all.push({label,prix:u.prix});
+        });
+        all.sort((a,b)=>{
+            const[mA,yA]=a.label.split(' ');
+            const[mB,yB]=b.label.split(' ');
+            return yA-yB||M.indexOf(mA)-M.indexOf(mB);
+        });
+        return all;
+    }
+
+    function refresh(){
+        const all=getAll();
+        const labels=all.map(d=>d.label);
+        const prices=all.map(d=>d.prix);
+        const minI=prices.indexOf(Math.min(...prices));
+        const maxI=prices.indexOf(Math.max(...prices));
+
+        document.getElementById('minPrice').textContent=prices[minI].toFixed(3)+' €/L';
+        document.getElementById('minDate').textContent=labels[minI];
+        document.getElementById('maxPrice').textContent=prices[maxI].toFixed(3)+' €/L';
+        document.getElementById('maxDate').textContent=labels[maxI];
+
+        if(chart)chart.destroy();
+
+        chart=new Chart(document.getElementById('chart'),{
+            type:'line',
+            data:{
+                labels,
+                datasets:[{
+                    label:'SP98 (€/L)',
+                    data:prices,
+                    borderColor:'#4da3ff',
+                    backgroundColor:'rgba(77,163,255,0.07)',
+                    borderWidth:2,
+                    pointRadius:prices.map((_,i)=>(i===minI||i===maxI)?6:0),
+                    pointHoverRadius:6,
+                    pointBackgroundColor:prices.map((_,i)=>i===minI?'#7ddb9a':'#ff6b62'),
+                    pointBorderColor:'#27303f',
+                    pointBorderWidth:2,
+                    fill:true,
+                    tension:.35
+                }]
+            },
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+                layout:{padding:{top:6,right:10,bottom:0,left:0}},
+                interaction:{mode:'index',intersect:false},
+                plugins:{
+                    legend:{display:false},
+                    tooltip:{
+                        backgroundColor:'#27303f',
+                        titleColor:'#eef3fa',
+                        bodyColor:'#aebdd0',
+                        borderColor:'#3c4a5e',
+                        borderWidth:1,
+                        cornerRadius:10,
+                        padding:12,
+                        titleFont:{family:'ui-monospace,Consolas,monospace',weight:'800',size:12},
+                        bodyFont:{family:'ui-monospace,Consolas,monospace',size:12},
+                        callbacks:{
+                            label:ctx=>{
+                                const v=ctx.parsed.y.toFixed(3)+' €/L';
+                                const i=ctx.dataIndex;
+                                if(i===minI)return v+'  (minimum)';
+                                if(i===maxI)return v+'  (maximum)';
+                                return v;
+                            }
+                        }
+                    }
+                },
+                scales:{
+                    x:{
+                        grid:{color:'rgba(60,74,94,0.5)',drawTicks:false},
+                        ticks:{color:'#55677f',font:{family:'ui-monospace,Consolas,monospace',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:16},
+                        border:{color:'#3c4a5e'}
+                    },
+                    y:{
+                        grid:{color:'rgba(60,74,94,0.5)',drawTicks:false},
+                        ticks:{color:'#55677f',font:{family:'ui-monospace,Consolas,monospace',size:11},callback:v=>v.toFixed(2)+' €',padding:8},
+                        border:{display:false}
+                    }
+                },
+                animation:{duration:600,easing:'easeOutQuart'}
+            }
+        });
+    }
+
+    function ajouter(){
+        const date=document.getElementById('inDate').value;
+        const prix=parseFloat(document.getElementById('inPrice').value);
+        if(!date||isNaN(prix)||prix<=0){toast('Remplis la date et le prix');return}
+        const i=userPrices.findIndex(u=>u.date===date);
+        if(i>=0)userPrices[i].prix=prix;else userPrices.push({date,prix});
+        localStorage.setItem('sp98_user',JSON.stringify(userPrices));
+        document.getElementById('inPrice').value='';
+        refresh();
+        toast('Prix ajouté');
+    }
+
+    function toast(msg){
+        const t=document.getElementById('toast');
+        document.getElementById('toastMsg').textContent=msg;
+        t.classList.add('show');
+        clearTimeout(t._t);
+        t._t=setTimeout(()=>t.classList.remove('show'),2000);
+    }
+
+    document.getElementById('inDate').valueAsDate=new Date();
+    refresh();
+</script>
+</body>
+</html>

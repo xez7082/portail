@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Lave-linge RPD V4</title>
+
+  <style>
+
+    :root {
+
+      --bg: #1c2431;
+
+      --panel: #1c2431;
+
+      --border: #3c4a5e;
+
+      --txt: #eef3fa;
+
+      --dim: #aebdd0;
+
+      --dim2: #55677f;
+
+      --accent: #4da3ff;
+
+      --green: #3fae64;
+
+      --amber: #f0b429;
+
+      --red: #ff6b62;
+
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+
+    html, body { background: var(--panel) !important; color: var(--txt); width: 100%; height: 100%; overflow: hidden; }
+
+    .dash { width: 100%; height: 100vh; height: 100dvh; background: var(--panel); padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+
+    .hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0; }
+
+    .title-grp { display: flex; align-items: center; gap: 12px; }
+
+    h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.5px; }
+
+    .st-badge { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; border: 1px solid var(--border); background: rgba(255,255,255,0.03); }
+
+    .st-badge.on { border-color: rgba(46,164,79,0.4); color: var(--green); background: rgba(46,164,79,0.1); }
+
+    .st-badge.off { border-color: rgba(248,81,73,0.4); color: var(--red); background: rgba(248,81,73,0.1); }
+
+    .st-badge.done { border-color: rgba(88,166,255,0.4); color: var(--accent); background: rgba(88,166,255,0.1); }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+    .dot.g { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+    .dot.r { background: var(--red); box-shadow: 0 0 8px var(--red); }
+
+    .clk { font-family: monospace; font-size: 18px; color: var(--dim); }
+
+    .main-grid { display: grid; grid-template-columns: 220px 1fr; gap: 20px; flex: 1; min-height: 0; }
+
+    @media (max-width: 880px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .left-col { display: flex; flex-direction: column; gap: 10px; align-items: center; min-height: 0; }
+
+    .mach-wrap { width: 100%; border: 2px solid var(--border); border-radius: 8px; background: #141b28; display: flex; justify-content: center; align-items: center; padding: 10px; position: relative; overflow: hidden; }
+
+    .mach-wrap { flex: 1; min-height: 0; } .mach-wrap svg { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
+
+    .pwr-btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--green); color: white; transition: background 0.2s; font-size: 15px; letter-spacing: 0.5px; }
+
+    .pwr-btn:hover { background: #37995a; }
+
+    .pwr-btn.on { background: var(--red); }
+
+    .pwr-btn.on:hover { background: #e5544b; }
+
+    .phase-lbl { text-align: center; font-size: 16px; font-weight: bold; color: var(--accent); padding: 8px; border-radius: 6px; background: rgba(88,166,255,0.05); width: 100%; border: 1px dashed rgba(88,166,255,0.2); }
+
+    .phase-lbl.off { color: var(--dim); background: none; border-color: var(--border); }
+
+    .phase-lbl.ok { color: var(--green); background: rgba(46,164,79,0.05); border-color: rgba(46,164,79,0.2); }
+
+    .right-col { display: flex; flex-direction: column; gap: 12px; justify-content: flex-start; min-height: 0; }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    .card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 3px; position: relative; overflow: hidden; }
+
+    .card.large { grid-column: span 2; }
+
+    .metric-lbl { font-size: 12px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .metric-val { font-size: 26px; font-weight: 700; color: #fff; font-family: monospace; display: flex; align-items: baseline; gap: 2px; line-height: 1.2; }
+
+    .metric-val.red { color: #ff79c6; }
+
+    .metric-val.dim { color: var(--dim2); }
+
+    .metric-unit { font-size: 16px; color: var(--dim); font-weight: normal; margin-left: 2px; }
+
+    .prog-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+
+    .prog-hdr { display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; }
+
+    .prog-bar-bg { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; width: 100%; position: relative; }
+
+    .prog-bar-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 5px; transition: width 0.5s ease; }
+
+    .prog-bar-fill.active { background: linear-gradient(90deg, var(--accent), #85e8ff, var(--accent)); background-size: 200% 100%; animation: moveBar 2s linear infinite; }
+
+    @keyframes moveBar { 0% { background-position: 200% 0; } 100% { background-position: 0 0; } }
+
+    .tl { display: flex; justify-content: space-between; position: relative; margin-top: 14px; padding: 0 16px; }
+
+    .tl-line-bg { position: absolute; top: 22px; left: 45px; right: 45px; height: 2px; background: var(--border); z-index: 1; }
+
+    .tl-line-fill { position: absolute; top: 22px; left: 45px; height: 2px; background: var(--accent); z-index: 2; width: 0%; transition: width 0.5s ease; }
+
+    .ph-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 3; width: 70px; }
+
+    .ph-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--panel); border: 2px solid var(--dim2); transition: all 0.3s; margin-top: 17px; }
+
+    .ph-step.done .ph-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+    .ph-step.active .ph-dot { border-color: #85e8ff; background: var(--panel); box-shadow: 0 0 10px #85e8ff; transform: scale(1.2); }
+
+    .ph-txt { font-size: 12px; font-weight: 600; color: var(--dim2); text-align: center; white-space: nowrap; position: absolute; top: 0; }
+
+    .ph-step.active .ph-txt { color: #fff; }
+
+    .ph-step.done .ph-txt { color: var(--dim); }
+
+    /* ── MAINTENANCE ── */
+
+    .consum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex-shrink: 0; }
+
+    .consum-item { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-left: 5px solid var(--dim2); border-radius: 8px; padding: 8px 14px; transition: border-color .3s, background .3s; }
+
+    .consum-ico { font-size: 22px; line-height: 1; flex-shrink: 0; }
+
+    .consum-lbl { font-size: 13px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .consum-st { font-size: 18px; font-weight: 700; font-family: monospace; margin-top: 4px; color: #fff; }
+
+    .consum-item.ok { border-left-color: var(--green); }
+
+    .consum-item.ok .consum-st { color: var(--green); }
+
+    .consum-item.warn { border-left-color: var(--red); background: rgba(248,81,73,0.08); animation: consumPulse 1.8s infinite ease-in-out; }
+
+    .consum-item.warn .consum-st { color: var(--red); }
+
+    .consum-item.unk .consum-st { color: var(--dim2); }
+
+    @keyframes consumPulse { 0%,100% { box-shadow: 0 0 0 rgba(248,81,73,0); } 50% { box-shadow: 0 0 16px rgba(248,81,73,0.4); } }
+
+    @media (max-width: 720px) { .consum { grid-template-columns: 1fr; } }
+
+    .cost-box { border-top: 1px solid var(--border); padding-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: center; flex-shrink: 0; }
+
+    .cost-item { display: flex; flex-direction: column; gap: 4px; }
+
+    .cost-lbl { font-size: 12px; color: var(--dim); text-transform: uppercase; font-weight: 600; }
+
+    .cost-val { font-size: 18px; font-weight: bold; font-family: monospace; color: #fff; }
+
+    .cost-val.tot { color: #f5cf6f; font-size: 20px; }
+
+    /* ── ANIMATIONS MACHINE ── */
+
+    @keyframes drum-wash-turn { 0%,100% { transform: rotate(0deg); } 40% { transform: rotate(45deg); } 50% { transform: rotate(45deg); } 90% { transform: rotate(-45deg); } }
+
+    @keyframes clothes-wash-tumble {
+
+      0%,100% { transform: translate(0,5px) rotate(0deg); }
+
+      20% { transform: translate(-8px,-6px) rotate(25deg); }
+
+      35% { transform: translate(4px,10px) rotate(70deg); }
+
+      50% { transform: translate(0,4px) rotate(10deg); }
+
+      70% { transform: translate(10px,-5px) rotate(-35deg); }
+
+      85% { transform: translate(-6px,8px) rotate(-80deg); }
+
+    }
+
+    @keyframes spin-turn { to { transform: rotate(360deg); } }
+
+    @keyframes foam-boil { 0%,100% { transform: scale(1) translateY(0); } 50% { transform: scale(1.04) translateY(-2px); } }
+
+    @keyframes blink-op { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+    @keyframes mach-vib { 0%,100% { transform: translate(0,0); } 25% { transform: translate(-1px,0.5px); } 75% { transform: translate(1px,-0.5px); } }
+
+    .drum-wash    { animation: drum-wash-turn 4.5s infinite ease-in-out; transform-origin: 100px 140px; }
+
+    .clothes-wash { animation: clothes-wash-tumble 4.5s infinite ease-in-out; transform-origin: 100px 140px; }
+
+    .drum-rinse   { animation: spin-turn 2.5s infinite linear; transform-origin: 100px 140px; }
+
+    .clothes-rinse{ animation: spin-turn 2.5s infinite linear; transform-origin: 100px 140px; }
+
+    .spin-extract { animation: spin-turn 0.18s infinite linear; transform-origin: 100px 140px; }
+
+    .foam-float   { animation: foam-boil 1.5s infinite ease-in-out; transform-origin: 100px 150px; }
+
+    .blink        { animation: blink-op 1s infinite ease-in-out; }
+
+    .vibrating    { animation: mach-vib 0.11s infinite linear; }
+
+    #wm-water     { transition: height 1.5s ease, y 1.5s ease, opacity 0.5s ease; }
+
+    @media (prefers-reduced-motion: reduce) { .vibrating, .prog-bar-fill.active { animation: none; } }
+
+  
+    /* ═══════════ ADAPTATION MULTI-SUPPORT ═══════════ */
+    /* Tablette 10" (700–1000px) : machine réduite, métriques en 2 colonnes, tout reste visible */
+    @media (max-width: 1000px){
+      .main-grid { grid-template-columns: 190px 1fr; gap: 14px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .metric-val { font-size: 22px; }
+      .consum { grid-template-columns: repeat(3, 1fr); }
+      h1 { font-size: 18px; }
+    }
+    /* Smartphone / tablette portrait (<700px) : essentiel seulement, tout tient sans scroll */
+    @media (max-width: 700px){
+      .dash { padding: 10px 12px; gap: 8px; }
+      .main-grid { grid-template-columns: 150px 1fr; gap: 12px; }
+      .metrics { grid-template-columns: 1fr 1fr; gap: 6px; }
+      .card { padding: 7px 10px; }
+      .metric-val { font-size: 20px; }
+      /* Masqués sur petit écran pour tenir d'un seul coup d'œil */
+      .consum, .cost-box, .tl { display: none !important; }
+      /* On ne garde que Temps restant + Phase parmi les métriques */
+      #m-power, #m-curr, #m-eau, #m-spin, #m-temp, #m-volt { display: none; }
+      .card:nth-child(n+3) { display: none; }   /* garde les 2 premières cartes (temps + phase) */
+    }
+    /* Très petit (<430px) : machine encore réduite */
+    @media (max-width: 430px){
+      .main-grid { grid-template-columns: 120px 1fr; }
+      h1 { font-size: 16px; }
+    }
+</style>
+
+</head>
+
+<body>
+
+<div class="dash">
+
+  <div class="hdr">
+
+    <div class="title-grp">
+
+      <h1>LAVE-LINGE</h1>
+
+      <div id="st-badge" class="st-badge off"><div id="sd" class="dot r"></div><span id="st">À L'ARRÊT</span></div>
+
+    </div>
+
+    <div id="clk" class="clk">00:00:00</div>
+
+  </div>
+
+  <div class="main-grid">
+
+    <div class="left-col">
+
+      <div class="mach-wrap">
+
+        <!-- ===================== MACHINE RÉALISTE ===================== -->
+
+        <svg viewBox="0 0 200 300" width="100%" height="100%">
+
+          <defs>
+
+            <linearGradient id="inox-dark" x1="0" y1="0" x2="1" y2="1">
+
+              <stop offset="0%" stop-color="#3a4454"/>
+
+              <stop offset="30%" stop-color="#1e2533"/>
+
+              <stop offset="70%" stop-color="#121721"/>
+
+              <stop offset="100%" stop-color="#0a0d14"/>
+
+            </linearGradient>
+
+            <linearGradient id="hublot-glass" x1="0" y1="0" x2="1" y2="1">
+
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.12"/>
+
+              <stop offset="100%" stop-color="#0284c7" stop-opacity="0.01"/>
+
+            </linearGradient>
+
+            <linearGradient id="water-grad" x1="0" y1="0" x2="0" y2="1">
+
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+
+              <stop offset="100%" stop-color="#0369a1" stop-opacity="0.55"/>
+
+            </linearGradient>
+
+            <filter id="blur-spin"><feGaussianBlur stdDeviation="2"/></filter>
+
+            <filter id="led-glow"><feGaussianBlur stdDeviation="1.2" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
+
+            <clipPath id="drum-clip"><circle cx="100" cy="140" r="48"/></clipPath>
+
+          </defs>
+
+          <g id="ll-machine">
+
+            <!-- CHÂSSIS -->
+
+            <rect x="10" y="10" width="180" height="280" rx="14" fill="url(#inox-dark)" stroke="#4a5770" stroke-width="1.5"/>
+
+            <rect x="13" y="13" width="174" height="274" rx="11" fill="none" stroke="#07090e" stroke-width="1.2"/>
+
+            <!-- BANDEAU HAUT -->
+
+            <rect x="10" y="10" width="180" height="46" fill="#090d14" rx="12"/>
+
+            <rect x="10" y="30" width="180" height="26" fill="#090d14"/>
+
+            <line x1="10" y1="56" x2="190" y2="56" stroke="#1b2333" stroke-width="1.5"/>
+
+            <!-- Bac à produit -->
+
+            <rect x="22" y="18" width="28" height="12" rx="2" fill="#141b26" stroke="#222f44" stroke-width="0.8"/>
+
+            <line x1="26" y1="27" x2="46" y2="27" stroke="#2d3d54" stroke-width="1"/>
+
+            <!-- ÉCRAN OLED -->
+
+            <rect x="65" y="15" width="70" height="18" rx="4" fill="#020408" stroke="#1e2636" stroke-width="1"/>
+
+            <text id="wm-disp" x="100" y="27" fill="#38bdf8" font-family="monospace" font-size="8.5" font-weight="800" text-anchor="middle" letter-spacing="0.5" filter="url(#led-glow)">STANDBY</text>
+
+            <!-- Voyants maintenance (CUVE / FILT / LOCK) -->
+
+            <g font-family="sans-serif" font-size="5.5" font-weight="bold" letter-spacing="0.2">
+
+              <text id="alert-lock" x="72" y="46" fill="#1e293b">LOCK</text>
+
+              <text id="alert-soak" x="100" y="46" fill="#1e293b" text-anchor="middle">SOAK</text>
+
+              <text id="alert-upd" x="128" y="46" fill="#1e293b" text-anchor="end">UPD</text>
+
+            </g>
+
+            <circle cx="158" cy="24" r="4.5" fill="#111622" stroke="#2a354d" stroke-width="1"/>
+
+            <circle id="wm-led" cx="158" cy="24" r="2.2" fill="#475569"/>
+
+            <!-- HUBLOT -->
+
+            <circle cx="100" cy="140" r="56" fill="none" stroke="#2e3a4e" stroke-width="5"/>
+
+            <circle cx="100" cy="140" r="53" fill="none" stroke="#090d14" stroke-width="1"/>
+
+            <g clip-path="url(#drum-clip)">
+
+              <circle cx="100" cy="140" r="48" fill="#0b0f17"/>
+
+              <!-- Bloc global (reçoit l'essorage) -->
+
+              <g id="wm-spin-group">
+
+                <!-- Tambour -->
+
+                <g id="wm-drum">
+
+                  <circle cx="100" cy="140" r="41" fill="none" stroke="#16202f" stroke-width="1.5" stroke-dasharray="3,6"/>
+
+                  <path d="M 100,92 L 95,106 L 105,106 Z" fill="#334155"/>
+
+                  <path d="M 58,161 L 72,154 L 68,146 Z" fill="#334155"/>
+
+                  <path d="M 142,161 L 128,154 L 132,146 Z" fill="#334155"/>
+
+                </g>
+
+                <!-- Vêtements -->
+
+                <g id="wm-clothes">
+
+                  <path d="M 72,130 Q 55,150 82,166 Q 115,155 98,125 Z" fill="#2563eb" opacity="0.85"/>
+
+                  <path d="M 102,132 Q 130,118 122,148 Q 95,156 102,132 Z" fill="#dc2626" opacity="0.8"/>
+
+                  <path d="M 82,155 Q 98,174 116,160 Q 100,146 82,155 Z" fill="#ca8a04" opacity="0.75"/>
+
+                </g>
+
+              </g>
+
+              <!-- Niveau d'eau -->
+
+              <rect id="wm-water" x="50" y="188" width="100" height="0" fill="url(#water-grad)" opacity="0"/>
+
+              <!-- Mousse -->
+
+              <g id="wm-foam" opacity="0" fill="#ffffff" class="foam-float">
+
+                <circle cx="72" cy="156" r="5" opacity="0.85"/>
+
+                <circle cx="83" cy="152" r="7.5" opacity="0.9"/>
+
+                <circle cx="98" cy="151" r="7" opacity="0.85"/>
+
+                <circle cx="114" cy="153" r="8.5" opacity="0.9"/>
+
+                <circle cx="126" cy="157" r="5.5" opacity="0.85"/>
+
+              </g>
+
+            </g>
+
+            <!-- Vitre bombée -->
+
+            <circle cx="100" cy="140" r="48" fill="url(#hublot-glass)" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+            <path d="M 64,112 Q 100,88 136,112" fill="none" stroke="#ffffff" stroke-width="1.2" opacity="0.12" stroke-linecap="round"/>
+
+          </g>
+
+        </svg>
+
+      </div>
+
+      <div id="plbl" class="phase-lbl off">EN ATTENTE</div>
+
+      <button id="pbtn" class="pwr-btn" onclick="togglePower()">▶ DÉMARRER</button>
+
+    </div>
+
+    <div class="right-col">
+
+      <div class="metrics">
+
+        <div class="card">
+
+          <span class="metric-lbl">Temps restant</span>
+
+          <div id="m-time" class="metric-val dim">--:--</div>
+
+        </div>
+
+        <div class="card large">
+
+          <span class="metric-lbl">Phase actuelle</span>
+
+          <div id="m-phase" class="metric-val dim" style="font-size:28px;">En attente</div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Puissance</span>
+
+          <div id="m-power" class="metric-val dim">0<span class="metric-unit">W</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Courant</span>
+
+          <div id="m-curr" class="metric-val dim">0.0<span class="metric-unit">A</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Eau estimée</span>
+
+          <div id="m-eau" class="metric-val dim">--<span class="metric-unit">L</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Essorage</span>
+
+          <div id="m-spin" class="metric-val dim">--<span class="metric-unit">tr/min</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Température</span>
+
+          <div id="m-temp" class="metric-val dim">--<span class="metric-unit">°C</span></div>
+
+        </div>
+
+        <div class="card">
+
+          <span class="metric-lbl">Tension</span>
+
+          <div id="m-volt" class="metric-val dim">--<span class="metric-unit">V</span></div>
+
+        </div>
+
+      </div>
+
+      <div class="prog-box">
+
+        <div class="prog-hdr">
+
+          <span id="prog-ph" style="color:var(--dim);">Prêt à démarrer</span>
+
+          <span id="prog-pct" style="color:var(--accent); font-family:monospace;">0 %</span>
+
+        </div>
+
+        <div class="prog-bar-bg">
+
+          <div id="prog-fill" class="prog-bar-fill"></div>
+
+        </div>
+
+        <div class="tl">
+
+          <div class="tl-line-bg"></div>
+
+          <div id="ph-line" class="tl-line-fill"></div>
+
+          <div id="ps0" class="ph-step"><span class="ph-txt">Remplissage</span><div id="pd0" class="ph-dot"></div></div>
+
+          <div id="ps1" class="ph-step"><span class="ph-txt">Lavage</span><div id="pd1" class="ph-dot"></div></div>
+
+          <div id="ps2" class="ph-step"><span class="ph-txt">Rinçage</span><div id="pd2" class="ph-dot"></div></div>
+
+          <div id="ps3" class="ph-step"><span class="ph-txt">Essorage</span><div id="pd3" class="ph-dot"></div></div>
+
+          <div id="ps4" class="ph-step"><span class="ph-txt">Terminé</span><div id="pd4" class="ph-dot"></div></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── MAINTENANCE ── -->
+
+  <div class="consum">
+
+    <div class="consum-item unk" id="cs-lock">
+
+      <div class="consum-ico">🔒</div>
+
+      <div><div class="consum-lbl">Sécurité enfant</div><div class="consum-st" id="cs-lock-st">—</div></div>
+
+    </div>
+
+    <div class="consum-item unk" id="cs-bubble">
+
+      <div class="consum-ico">🫧</div>
+
+      <div><div class="consum-lbl">Bubble Soak</div><div class="consum-st" id="cs-bubble-st">—</div></div>
+
+    </div>
+
+    <div class="consum-item unk" id="cs-fw">
+
+      <div class="consum-ico">⬆️</div>
+
+      <div><div class="consum-lbl">Firmware</div><div class="consum-st" id="cs-fw-st">—</div></div>
+
+    </div>
+
+  </div>
+
+  <div class="cost-box">
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Énergie totale</span>
+
+      <div id="m-nrg" class="metric-val" style="font-size:20px;">0.0<span class="metric-unit">kWh</span></div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût Électricité</span>
+
+      <div id="c-elec" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item">
+
+      <span class="cost-lbl">Coût Eau</span>
+
+      <div id="c-eau" class="cost-val">0.00 €</div>
+
+    </div>
+
+    <div class="cost-item" style="text-align: right; border-left: 1px solid var(--border); padding-left: 20px;">
+
+      <span class="cost-lbl" style="color:var(--accent)">Estimation Cycle</span>
+
+      <div id="c-tot" class="cost-val tot">0.00 €</div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const CFG={
+
+  HA_URL:location.origin, /* local + Nabu Casa */
+
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+
+  SW:'switch.lave_linge',PWR:'sensor.lave_linge_power',
+
+  NRG:'sensor.lave_linge_energy',CUR:'sensor.lave_linge_current',
+
+  PRG:'sensor.lave_linge_progression',
+
+  JOB:'sensor.lave_linge_job_state',
+
+  TEMP:'select.lave_linge_water_temperature',
+
+  SPIN:'select.lave_linge_spin_level',
+
+  VOLT:'sensor.lave_linge_voltage',
+
+  PROG:'select.lave_linge_programme_actif',
+
+  // État & maintenance (entités réelles du lave-linge)
+
+  CHILD_LOCK:'binary_sensor.lave_linge_child_lock',
+
+  BUBBLE:'switch.lave_linge_bubble_soak',
+
+  FW:'update.lave_linge',
+
+  KWH:0.1927,EAU:3.08,
+
+};
+
+const FR={'wash':'Lavage','ai_wash':'Lavage IA','pre_wash':'Pré-lavage','soak':'Trempage',
+
+  'rinse':'Rinçage','ai_rinse':'Rinçage IA','spin':'Essorage','ai_spin':'Essorage IA',
+
+  'drying':'Séchage','cooling':'Refroidissement','finish':'Terminé','finished':'Terminé',
+
+  'none':'En attente','inactive':'En attente','ready':'Prêt','pause':'En pause',
+
+  'weight_sensing':'Pesée du linge','wrinkle_prevent':'Anti-froissage',
+
+  'delay_wash':'Démarrage différé','air_wash':'Lavage à l\'air',
+
+};
+
+const JMAP={'pre_wash':0,'wash':1,'ai_wash':1,'soak':1,'rinse':2,'ai_rinse':2,'spin':3,'ai_spin':3,'drying':3,'cooling':3,'finish':4,'finished':4};
+
+const LL_TEMP={'cold':{kwh:.12,eau:38,min:60},'20':{kwh:.18,eau:40,min:90},'30':{kwh:.28,eau:45,min:100},'40':{kwh:.52,eau:55,min:120},'60':{kwh:.70,eau:65,min:140},'90':{kwh:.90,eau:72,min:160},'none':{kwh:.55,eau:48,min:120}};
+
+// Entités possibles pour l'heure de fin / le temps restant (l'auto-détection en ajoute d'autres)
+
+let END_CANDS=['sensor.lave_linge_heure_de_fin','sensor.lave_linge_heure_de_fin_de_programme','sensor.lave_linge_completion_time','sensor.lave_linge_end_time','sensor.lave_linge_fin_de_programme'];
+
+let REM_CANDS=['number.lave_linge_countdown','sensor.lave_linge_temps_restant','sensor.lave_linge_remaining_time','sensor.lave_linge_time_remaining','sensor.lave_linge_remaining_time_min'];
+
+let PROG_CANDS=['select.lave_linge_programme_actif','select.lave_linge_programme','sensor.lave_linge_programme','select.lave_linge_course','sensor.lave_linge_course','sensor.lave_linge_cycle','sensor.lave_linge_washer_cycle'];
+
+// Libellés FR des programmes (repli automatique : joli formatage pour les valeurs inconnues)
+
+const WL_PROG={
+
+  'cotton':'Coton','cottons':'Coton','synthetic':'Synthétiques','synthetics':'Synthétiques',
+
+  'eco':'Eco','eco_40_60':'Eco 40-60°','eco40_60':'Eco 40-60°','mixed':'Mixte','daily':'Quotidien',
+
+  'quick':'Rapide','quick_wash':'Lavage rapide','super_speed':'Super rapide','speed_wash':'Lavage rapide',
+
+  'delicates':'Délicat','delicate':'Délicat','hand_wash':'Lavage main','wool':'Laine',
+
+  'bedding':'Literie','outdoor':'Vêtements sport','sportswear':'Sport','denim':'Jean',
+
+  'rinse_spin':'Rinçage + Essorage','rinse':'Rinçage','spin':'Essorage','drain':'Vidange',
+
+  'drum_clean':'Nettoyage tambour','eco_drum_clean':'Nettoyage tambour','dark_garment':'Couleurs sombres',
+
+  'colours':'Couleurs','colors':'Couleurs','baby_care':'Bébé','ai_wash':'Lavage IA',
+
+  'intensive':'Intensif','anti_allergy':'Anti-allergie','steam':'Vapeur','shirts':'Chemises'
+
+};
+
+function progLabel(v){
+
+  if(v==null) return '';
+
+  const k=String(v).toLowerCase().trim();
+
+  if(!k || ['unknown','unavailable','none','off'].includes(k)) return '';
+
+  if(WL_PROG[k]) return WL_PROG[k];
+
+  return String(v).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+
+}
+
+let S={on:false,pwr:0,nrg:109.5,cur:0,cd:0,remRaw:0,cdSrc:'',endTime:null,prg:0,job:'none',temp:'40',program:'',spin:'',volt:0,cycE:0,lastE:109.5,cycA:false,_vph:undefined,lock:'',bubble:'',fw:''};
+
+let ws=null;
+
+/* ══════════ RENDU MACHINE (animations pilotées par la phase) ══════════ */
+
+const gid=id=>document.getElementById(id);
+
+const M={
+
+  machine:gid('ll-machine'), drum:gid('wm-drum'), clothes:gid('wm-clothes'),
+
+  spinGroup:gid('wm-spin-group'), water:gid('wm-water'), foam:gid('wm-foam'),
+
+  led:gid('wm-led'), disp:gid('wm-disp'),
+
+  aLock:gid('alert-lock'), aSoak:gid('alert-soak'), aUpd:gid('alert-upd')
+
+};
+
+function setWater(y,h,op){ M.water.setAttribute('y',y); M.water.setAttribute('height',h); M.water.style.opacity=op; }
+
+function setMachine(ph){
+
+  M.drum.setAttribute('class',''); M.clothes.setAttribute('class','');
+
+  M.spinGroup.setAttribute('class',''); M.spinGroup.style.filter='none';
+
+  M.foam.style.opacity='0'; M.machine.classList.remove('vibrating');
+
+  switch(ph){
+
+    case -1:
+
+      M.led.style.fill='#475569'; M.disp.textContent='STANDBY'; M.disp.style.fill='#38bdf8';
+
+      setWater(188,0,0);
+
+      break;
+
+    case 0:
+
+      M.led.style.fill='#38bdf8'; M.disp.textContent='REMPLIR'; M.disp.style.fill='#38bdf8';
+
+      setWater(156,32,1);
+
+      break;
+
+    case 1:
+
+      M.led.style.fill='#38bdf8'; M.disp.textContent='LAVAGE'; M.disp.style.fill='#38bdf8';
+
+      M.drum.setAttribute('class','drum-wash'); M.clothes.setAttribute('class','clothes-wash');
+
+      setWater(156,32,1); M.foam.style.opacity='1';
+
+      break;
+
+    case 2:
+
+      M.led.style.fill='#38bdf8'; M.disp.textContent='RINÇAGE'; M.disp.style.fill='#38bdf8';
+
+      M.drum.setAttribute('class','drum-rinse'); M.clothes.setAttribute('class','clothes-rinse');
+
+      setWater(150,38,1);
+
+      break;
+
+    case 3:
+
+      M.led.style.fill='#f59e0b'; M.disp.textContent='ESSORAGE'; M.disp.style.fill='#f59e0b';
+
+      M.spinGroup.setAttribute('class','spin-extract'); M.spinGroup.style.filter='url(#blur-spin)';
+
+      setWater(188,0,0); M.machine.classList.add('vibrating');
+
+      break;
+
+    case 4:
+
+      M.led.style.fill='#22c55e'; M.disp.textContent='TERMINÉ'; M.disp.style.fill='#22c55e';
+
+      setWater(188,0,0);
+
+      break;
+
+  }
+
+}
+
+// Voyants machine : LOCK (sécurité enfant), SOAK (bubble soak), UPD (firmware à mettre à jour)
+
+function updateMachineAlerts(ph){
+
+  const on=v=>String(v||'').toLowerCase()==='on';
+
+  M.aLock.setAttribute('fill', on(S.lock)?'#22c55e':'#1e293b');
+
+  M.aSoak.setAttribute('fill', on(S.bubble)?'#38bdf8':'#1e293b');
+
+  M.aUpd.setAttribute('fill', on(S.fw)?'#f59e0b':'#1e293b');
+
+  M.aUpd.classList.toggle('blink', on(S.fw));
+
+}
+
+// Voyants maintenance (bandeau) : logique on/off gérée directement dans render()
+
+/* ══════════ WEBSOCKET HOME ASSISTANT ══════════ */
+
+function connectWS(){
+
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket');
+
+  let id=1;
+
+  ws.onmessage=ev=>{
+
+    const m=JSON.parse(ev.data);
+
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+
+    else if(m.type==='auth_ok'){ws.send(JSON.stringify({id:id++,type:'subscribe_events',event_type:'state_changed'}));ws.send(JSON.stringify({id:id++,type:'get_states'}));}
+
+    else if(m.type==='result'&&Array.isArray(m.result)){diagnose(m.result);m.result.forEach(ig);}
+
+    else if(m.type==='event'&&m.event?.event_type==='state_changed')ig(m.event.data.new_state);
+
+  };
+
+  ws.onclose=()=>setTimeout(connectWS,5000);ws.onerror=()=>ws.close();
+
+}
+
+// Scanne les entités lave_linge, les affiche en console et adopte automatiquement
+
+// une entité de temps si aucune connue n'est présente.
+
+function diagnose(states){
+
+  const ll=states.filter(x=>x.entity_id && x.entity_id.includes('lave_linge'));
+
+  console.log('%c[Lave-linge] '+ll.length+' entités détectées :','color:#58a6ff;font-weight:bold');
+
+  ll.forEach(x=>console.log('  '+x.entity_id+' = '+x.state+'   ('+((x.attributes&&x.attributes.friendly_name)||'')+')'));
+
+  const timeish=ll.filter(x=>/restant|remain|fin|end|countdown|temps|completion|time/i.test(x.entity_id+' '+((x.attributes&&x.attributes.friendly_name)||'')));
+
+  if(timeish.length) console.log('%c[Lave-linge] candidats « temps » :','color:#e3b341;font-weight:bold',timeish.map(x=>x.entity_id+' = '+x.state));
+
+  const present=new Set(ll.map(x=>x.entity_id));
+
+  if(!END_CANDS.some(id=>present.has(id)) && !REM_CANDS.some(id=>present.has(id)) && timeish.length){
+
+    const c=timeish[0];
+
+    if(/^\d+(\.\d+)?$/.test(String(c.state))) REM_CANDS.push(c.entity_id);
+
+    else END_CANDS.push(c.entity_id);
+
+    console.log('%c[Lave-linge] adoption auto : '+c.entity_id,'color:#2ea44f;font-weight:bold');
+
+  }
+
+  // programme
+
+  if(!PROG_CANDS.some(id=>present.has(id))){
+
+    const pcand=ll.find(x=>/programme|program|course|cycle/i.test(x.entity_id) && !/job|state|remain|time|countdown/i.test(x.entity_id));
+
+    if(pcand){ PROG_CANDS.push(pcand.entity_id); S.program=pcand.state; console.log('%c[Lave-linge] programme auto : '+pcand.entity_id+' = '+pcand.state,'color:#2ea44f;font-weight:bold'); }
+
+  }
+
+}
+
+// Analyse l'heure de fin quel que soit le format (ISO, date, ou "HH:MM")
+
+function parseEndTime(raw){
+
+  if(raw==null) return null;
+
+  const s=String(raw).trim();
+
+  if(!s || ['unknown','unavailable','none','off'].includes(s.toLowerCase())) return null;
+
+  if(/^\d+(\.\d+)?$/.test(s)) return null;
+
+  const hm=s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+
+  if(hm){
+
+    const now=new Date(), d=new Date(now);
+
+    d.setHours(+hm[1], +hm[2], hm[3]?+hm[3]:0, 0);
+
+    if(d<=now) d.setDate(d.getDate()+1);
+
+    return d;
+
+  }
+
+  const d=new Date(s);
+
+  return isNaN(d.getTime())?null:d;
+
+}
+
+// Temps restant : 1) heure de fin  2) temps restant direct  3) estimation via progression
+
+function updateCountdown(){
+
+  const end=parseEndTime(S.endTime);
+
+  if(end){ const d=Math.floor((end-new Date())/1000); S.cd=d>0?d:0; S.cdSrc='fin'; return; }
+
+  if(S.remRaw>0){ S.cd = S.remRaw<600 ? Math.round(S.remRaw*60) : Math.round(S.remRaw); S.cdSrc='restant'; return; }
+
+  if(S.on && S.prg>0 && S.prg<99){
+
+    const tot=(LL_TEMP[S.temp]||LL_TEMP['40']).min||120;
+
+    S.cd=Math.round(tot*60*(1-S.prg/100)); S.cdSrc='est'; return;
+
+  }
+
+  S.cd=0; S.cdSrc='';
+
+}
+
+function ig(s){
+
+  if(!s)return;const v=parseFloat(s.state)||0;
+
+  switch(s.entity_id){
+
+    case CFG.SW:{const wo=S.on;S.on=(s.state==='on');if(S.on&&!wo){S.lastE=S.nrg;S.cycE=0;S.cycA=true;}if(!S.on&&wo)S.cycA=false;break;}
+
+    case CFG.PWR:S.pwr=v;break;case CFG.NRG:S.nrg=v;if(S.cycA)S.cycE=Math.max(0,v-S.lastE);break;
+
+    case CFG.CUR:S.cur=v;break;
+
+    case CFG.PRG:S.prg=v;break;
+
+    case CFG.JOB:S.job=['unavailable','unknown'].includes(s.state)?'none':s.state;break;
+
+    case CFG.TEMP:S.temp=s.state||'40';break;
+
+    case CFG.SPIN:S.spin=s.state;break;
+
+    case CFG.VOLT:S.volt=v;break;
+
+    case CFG.CHILD_LOCK:S.lock=s.state;break;
+
+    case CFG.BUBBLE:S.bubble=s.state;break;
+
+    case CFG.FW:S.fw=s.state;break;
+
+  }
+
+  const e=s.entity_id;
+
+  if(END_CANDS.includes(e)){S.endTime=s.state;updateCountdown();}
+
+  if(REM_CANDS.includes(e)){S.remRaw=v;updateCountdown();}
+
+  if(PROG_CANDS.includes(e)){S.program=s.state;}
+
+  render();
+
+}
+
+function phase(){
+
+  if(!S.on)return -1;if(S.prg>=99)return 4;
+
+  if(JMAP[S.job]!=null)return JMAP[S.job];
+
+  const p=S.prg;if(S.pwr>5&&p<=15)return 0;if(p<=45)return 1;if(p<=72)return 2;if(p<99)return 3;return 4;
+
+}
+
+function fmtT(s){if(!s||s<=0)return'--:--';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?h+'h'+String(m).padStart(2,'0'):String(m).padStart(2,'0')+' min';}
+
+function render(){
+
+  const ph=phase(),prog=Math.min(100,Math.max(0,S.prg));
+
+  const fr=S.on?(FR[S.job]||['Remplissage','Lavage','Rinçage','Essorage','Terminé'][ph]||'En cours'):'En attente';
+
+  const badge=gid('st-badge'),sd=gid('sd'),st=gid('st');
+
+  if(!S.on){badge.className='st-badge off';sd.className='dot r';st.textContent='À L\'ARRÊT';}
+
+  else if(ph===4){badge.className='st-badge done';sd.className='dot g';st.textContent='TERMINÉ ✓';}
+
+  else{badge.className='st-badge on';sd.className='dot g';st.textContent='EN MARCHE';}
+
+  const pl=gid('plbl');pl.textContent=fr.toUpperCase();pl.className='phase-lbl'+(ph===-1?' off':ph===4?' ok':'');
+
+  const pb=gid('pbtn');pb.textContent=S.on?'■ ARRÊTER':'▶ DÉMARRER';pb.className='pwr-btn'+(S.on?' on':'');
+
+  // Animations SVG : uniquement au changement de phase
+
+  if(ph!==S._vph){S._vph=ph;setMachine(ph);}
+
+  updateMachineAlerts(ph);
+
+  const pn=progLabel(S.program);
+
+  gid('prog-ph').textContent=fr+(S.on&&pn?' — '+pn:'');gid('prog-pct').textContent=Math.round(prog)+' %';
+
+  const pf=gid('prog-fill');pf.style.width=prog+'%';S.on&&ph>-1&&ph<4?pf.classList.add('active'):pf.classList.remove('active');
+
+  const lp=ph<=0?0:Math.min(100,(ph/4)*100);gid('ph-line').style.width=lp+'%';
+
+  for(let i=0;i<5;i++){const ps=gid('ps'+i),pd=gid('pd'+i);ps.className='ph-step';pd.className='ph-dot';if(i<ph&&S.on){ps.classList.add('done');pd.classList.add('done');}else if(i===ph&&S.on){ps.classList.add('active');pd.classList.add('active');}}
+
+  const set=(id,txt,cls)=>{const e=gid(id);e.innerHTML=txt;e.className='metric-val '+cls;};
+
+  set('m-time',S.on&&S.cd>0?((S.cdSrc==='est'?'~':'')+fmtT(S.cd)):'--:--',S.cd>0?'red':'dim');
+
+  set('m-power',Math.round(S.pwr)+'<span class="metric-unit">W</span>',S.pwr>10?'red':'dim');
+
+  set('m-curr',S.cur.toFixed(1)+'<span class="metric-unit">A</span>',S.cur>0.2?'':'dim');
+
+  set('m-nrg',S.nrg.toFixed(1)+'<span class="metric-unit">kWh</span>','');
+
+  const llp=LL_TEMP[S.temp]||LL_TEMP['40'];
+
+  const eau=S.on?Math.round(llp.eau*prog/100):0;
+
+  set('m-eau',eau>0?eau+'<span class="metric-unit">L</span>':'--<span class="metric-unit">L</span>',eau>0?'':'dim');
+
+  // Essorage (tr/min)
+
+  const sp=String(S.spin||'').toLowerCase();
+
+  if(sp==='no_spin') set('m-spin','0<span class="metric-unit">tr/min</span>','');
+
+  else if(sp==='rinse_hold') set('m-spin','HOLD','dim');
+
+  else if(/^\d+$/.test(sp)) set('m-spin',sp+'<span class="metric-unit">tr/min</span>','');
+
+  else set('m-spin','--<span class="metric-unit">tr/min</span>','dim');
+
+  // Température de l'eau (°C)
+
+  const tp=String(S.temp||'').toLowerCase();
+
+  if(tp==='cold') set('m-temp','Froid','');
+
+  else if(tp==='none'||tp==='') set('m-temp','--<span class="metric-unit">°C</span>','dim');
+
+  else if(/^\d+$/.test(tp)) set('m-temp',tp+'<span class="metric-unit">°C</span>','');
+
+  else set('m-temp',S.temp,'');
+
+  // Tension (V)
+
+  set('m-volt',S.volt>0?Math.round(S.volt)+'<span class="metric-unit">V</span>':'--<span class="metric-unit">V</span>',S.volt>0?'':'dim');
+
+  const phEl=gid('m-phase');phEl.textContent=S.on?fr:'En attente';phEl.className='metric-val'+(S.on&&ph>-1?'':' dim');phEl.style.fontSize='28px';
+
+  const cE=S.on?(llp.kwh*prog/100*CFG.KWH):(S.cycE*CFG.KWH);
+
+  const cW=(prog/100)*((llp.eau||0)/1000)*CFG.EAU;
+
+  gid('c-elec').textContent=(isNaN(cE)?'0.00':cE.toFixed(2))+' €';
+
+  gid('c-eau').textContent=(isNaN(cW)?'0.00':cW.toFixed(2))+' €';
+
+  gid('c-tot').textContent=(isNaN(cE+cW)?'0.00':(cE+cW).toFixed(2))+' €';
+
+  // Maintenance (bandeau)
+
+  // État & maintenance (entités réelles)
+
+  const on=v=>String(v||'').toLowerCase()==='on';
+
+  const tile=(id,stId,cls,txt)=>{const it=gid(id),st=gid(stId);if(it&&st){it.className='consum-item '+cls;st.textContent=txt;}};
+
+  // Sécurité enfant : activée = info vert, sinon neutre
+
+  on(S.lock) ? tile('cs-lock','cs-lock-st','ok','Activée') : tile('cs-lock','cs-lock-st','unk','Désactivée');
+
+  // Bubble Soak : actif = vert, sinon neutre
+
+  on(S.bubble) ? tile('cs-bubble','cs-bubble-st','ok','Actif') : tile('cs-bubble','cs-bubble-st','unk','Inactif');
+
+  // Firmware : maj dispo = alerte, sinon à jour
+
+  on(S.fw) ? tile('cs-fw','cs-fw-st','warn','MAJ DISPO') : tile('cs-fw','cs-fw-st','ok','À jour');
+
+}
+
+function togglePower(){if(ws&&ws.readyState===1)ws.send(JSON.stringify({id:99,type:'call_service',domain:'switch',service:S.on?'turn_off':'turn_on',service_data:{entity_id:CFG.SW}}));}
+
+function tick(){
+
+  const n=new Date();gid('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+
+  if(S.on)updateCountdown();
+
+  render();
+
+}
+
+setMachine(-1);
+
+connectWS();setInterval(tick,1000);render();
+
+</script>
+
+</body>
+
+</html>

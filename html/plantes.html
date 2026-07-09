@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plantes vertes</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --ok:#3fae64; --okl:#7ddb9a; --warn:#f0b429; --bad:#ff6b62;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;overflow-y:auto;scrollbar-width:thin;padding:18px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-content:start}
+
+.plant{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--okl);
+  border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.hd{display:flex;gap:14px;align-items:center}
+.hd img{width:72px;height:72px;border-radius:12px;object-fit:cover;background:var(--card2);flex-shrink:0}
+.hd .n{font-size:20px;font-weight:800}
+.hd .lat{font-size:14px;color:var(--dim);font-style:italic;margin-top:2px}
+.bat{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:800;
+  border-radius:8px;padding:4px 10px;margin-top:6px;width:fit-content}
+.bat.ok{color:var(--okl);background:rgba(63,174,100,.14)}
+.bat.warn{color:var(--warn);background:rgba(240,180,41,.14)}
+.bat.bad{color:var(--bad);background:rgba(255,107,98,.14)}
+
+.m{display:flex;flex-direction:column;gap:6px}
+.m .r{display:flex;justify-content:space-between;align-items:baseline;font-size:16px}
+.m .r .l{display:flex;gap:8px;align-items:center;color:var(--txt)}
+.m .r b{font-size:17px;font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+.bar{height:6px;border-radius:3px;background:var(--card2);overflow:hidden}
+.bar div{height:100%;width:0%;border-radius:3px;transition:width .5s}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:location.origin, /* local + Nabu Casa */
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTdmOWM3YWU1ZjE0MzZjYjNjYzQ2Nzg4ZDI2MTU0YSIsImlhdCI6MTc4MzQ5MDE4OCwiZXhwIjoyMDk4ODUwMTg4fQ.WqwBlvCxIUE36VZd82RHkVmV9Ep5s9uFJ95f7jAuWlY',
+  PLANTS:[
+    {n:'Cactus Oriental', lat:'Plantes grasses', img:'/local/Cactus-oriental.png',
+     bat:'sensor.cactus_oriental_batterie',
+     m:[
+       ['💧','Humidité sol','sensor.cactus_oriental_humidite',' %',0,70,'#4da3ff'],
+       ['☀️','Éclairement','sensor.cactus_oriental_eclairement',' Lux',0,20000,'#f0b429'],
+       ['🌡️','Température','sensor.cactus_oriental_temperature',' °C',1,35,'#f97316'],
+       ['🌱','Conductivité','sensor.cactus_oriental_conductivite',' µs/cm',0,900,'#7ddb9a']
+     ]},
+    {n:'Yucca', lat:'Yucca gloriosa', img:'/local/yucca glorosia.png',
+     bat:'sensor.plant_sensor_a154_batterie',
+     m:[
+       ['💧','Humidité sol','sensor.plant_sensor_a154_humidite',' %',0,75,'#4da3ff'],
+       ['☀️','Éclairement','sensor.plant_sensor_a154_eclairement',' Lux',0,3000,'#f0b429'],
+       ['🌡️','Température','sensor.plant_sensor_a154_temperature',' °C',1,35,'#f97316'],
+       ['🌱','Conductivité','sensor.plant_sensor_a154_conductivite',' µs/cm',0,800,'#7ddb9a']
+     ]},
+    {n:'Fleurs de lune', lat:'Spathiphyllum Wallisii', img:'/local/fleurdelune.png',
+     bat:'sensor.plant_sensor_5f6d_batterie',
+     m:[
+       ['💧','Humidité sol','sensor.plant_sensor_5f6d_humidite',' %',0,65,'#4da3ff'],
+       ['☀️','Éclairement','sensor.plant_sensor_5f6d_eclairement',' Lux',0,3000,'#f0b429'],
+       ['🌡️','Température','sensor.plant_sensor_5f6d_temperature',' °C',1,30,'#f97316'],
+       ['🌱','Conductivité','sensor.plant_sensor_5f6d_conductivite',' µs/cm',0,800,'#7ddb9a']
+     ]}
+  ]
+};
+
+const gid=id=>document.getElementById(id);
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const fr=(v,d)=>v==null?'--':v.toFixed(d).replace('.',',');
+
+document.getElementById('app').innerHTML=CFG.PLANTS.map((p,i)=>`
+  <div class="plant">
+    <div class="hd">
+      <img src="${p.img}" alt="${p.n}">
+      <div>
+        <div class="n">${p.n}</div>
+        <div class="lat">${p.lat}</div>
+        <span class="bat ok" id="bat-${i}">🔋 --%</span>
+      </div>
+    </div>
+    <div class="m">
+      ${p.m.map((m,j)=>`
+        <div class="r"><span class="l">${m[0]} ${m[1]}</span><b id="v-${i}-${j}" style="color:${m[6]}">--${m[3]}</b></div>
+        <div class="bar"><div id="b-${i}-${j}" style="background:${m[6]}"></div></div>`).join('')}
+    </div>
+  </div>`).join('');
+
+function render(){
+  CFG.PLANTS.forEach((p,i)=>{
+    const b=num(p.bat), be=gid('bat-'+i);
+    be.textContent='🔋 '+(b==null?'--':Math.round(b))+'%';
+    be.className='bat '+(b==null?'bad':b<=15?'bad':b<=35?'warn':'ok');
+    p.m.forEach((m,j)=>{
+      const v=num(m[2]);
+      gid('v-'+i+'-'+j).textContent=(v==null?'--':fr(v,m[4]))+m[3];
+      gid('b-'+i+'-'+j).style.width=(v==null?0:Math.max(0,Math.min(100,v/m[5]*100)))+'%';
+    });
+  });
+}
+
+function connectWS(){
+  const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/websocket';
+  ws=new WebSocket(url);
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+render(); connectWS();
+</script>
+</body>
+</html>

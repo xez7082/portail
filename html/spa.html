@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spa</title>
+<style>
+:root{
+  --bg:#1c2431; --card:#27303f; --card2:#2f3a4c; --line:#3c4a5e; --txt:#eef3fa;
+  --dim:#aebdd0; --dim2:#55677f; --accent:#4da3ff; --accent2:#a8d1ff;
+  --ok:#3fae64; --warn:#f0b429; --bad:#ff6b62; --water:#4da3ff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;overflow:hidden}
+#app{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column}
+
+#bar{display:flex;align-items:center;gap:14px;padding:12px 18px;flex-wrap:wrap;
+  background:var(--card);border-bottom:1px solid var(--line);flex-shrink:0}
+#ttl{font-size:20px;font-weight:800;letter-spacing:.05em}
+#wt{margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:22px;font-weight:800;color:var(--water)}
+#wt small{font-size:14px;color:var(--dim);font-weight:600}
+
+#body{flex:1;overflow-y:auto;scrollbar-width:thin;padding:16px;display:flex;flex-direction:column;gap:16px}
+.sect{font-size:13px;font-weight:800;letter-spacing:.16em;color:var(--accent2)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;
+  display:flex;flex-direction:column;gap:6px;text-align:center;align-items:center}
+.c .l{font-size:14px;color:var(--dim);font-weight:700}
+.c .v{font-size:30px;font-weight:800;font-family:ui-monospace,Consolas,monospace;color:var(--accent2)}
+.c .v small{font-size:15px;color:var(--dim)}
+.c.alert{border-color:var(--bad);background:#3a2626}
+.c.alert .v{color:var(--bad);font-size:20px}
+.c.safe .v{color:var(--ok);font-size:20px}
+
+/* Consigne */
+#target{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:14px 18px;flex-wrap:wrap;justify-content:center}
+#target .tv{font-size:40px;font-weight:800;font-family:ui-monospace,Consolas,monospace}
+.tbtn{font-size:26px;font-weight:800;min-width:60px;min-height:60px;border-radius:12px;cursor:pointer;
+  border:2px solid var(--line);background:var(--card2);color:var(--accent2);font-family:inherit}
+.tbtn:hover{border-color:var(--accent)}
+
+/* Barres (chimie / âges) */
+.brow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  display:flex;flex-direction:column;gap:8px}
+.brow .hd{display:flex;justify-content:space-between;align-items:baseline;font-size:16px;font-weight:700}
+.brow .hd b{font-family:ui-monospace,Consolas,monospace;font-size:24px}
+.brow .rng{font-size:13px;color:var(--dim)}
+.bar{height:14px;background:var(--card2);border-radius:7px;overflow:hidden;position:relative}
+.fill{height:100%;width:0%;border-radius:7px;background:var(--accent);transition:width .5s,background .4s}
+.stat{font-size:14px;font-weight:800}
+.stat.ok{color:var(--ok)} .stat.warn{color:var(--warn)} .stat.bad{color:var(--bad)}
+.rbtn{align-self:flex-start;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;
+  border:2px solid var(--line);background:var(--card2);color:var(--dim);border-radius:10px;padding:10px 14px;min-height:44px}
+.rbtn:hover{border-color:var(--accent);color:var(--accent2)}
+
+/* Interrupteurs */
+#swgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.sw{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:18px 12px;
+  display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;cursor:pointer;min-height:120px;justify-content:center}
+.sw:hover{border-color:var(--accent2)} .sw:active{transform:scale(.98)}
+.sw .ic{font-size:32px} .sw .n{font-size:16px;font-weight:700}
+.sw .s{font-size:14px;font-weight:800;color:var(--dim2)}
+.sw.on{border-color:var(--accent);background:#26364d}
+.sw.on .s{color:var(--accent2)}
+.sw.unav{opacity:.45;cursor:default}
+
+/* Programmation */
+#prog{display:flex;flex-direction:column;gap:14px;max-width:640px}
+.prow{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.prow .l{font-size:16px;color:var(--dim);font-weight:700}
+.prow .v{font-size:24px;font-weight:800;font-family:ui-monospace,Consolas,monospace;color:var(--accent2)}
+.prow input[type=time]{font-size:22px;font-family:ui-monospace,Consolas,monospace;background:var(--card2);
+  color:var(--txt);border:2px solid var(--line);border-radius:10px;padding:10px;min-height:52px}
+.pbtn{font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;border:none;border-radius:12px;
+  background:var(--accent);color:#fff;padding:14px 20px;min-height:54px}
+.pbtn:hover{background:#2f74c0}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0f1724;
+  border:2px solid var(--accent);color:#fff;font-size:15px;font-weight:700;padding:12px 20px;border-radius:10px;display:none;z-index:10}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <div id="ttl">🛁 SPA</div>
+    <div id="wt">--.-<small> °C eau</small></div>
+  </div>
+  <div id="body"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const CFG={
+  HA_URL:'http://192.168.1.18:8123',
+  HA_TOKEN:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI4ZjFjNTRlZDRhYzQ0ZTM3YjczM2M4MDEyZjI1NThkYSIsImlhdCI6MTc3Nzc5NzIwNSwiZXhwIjoyMDkzMTU3MjA1fQ.YiyhAHNjm-lgSH67KZ-qmp-mlSsy2zZbHowjH6dCsbk',
+  WATER:'sensor.water_quality_temperature',
+  CLIMATE:'climate.layzspa_temperature_control', T_MIN:20, T_MAX:40,
+  AIR_T:'sensor.tdeg_spa_temperature', AIR_H:'sensor.tdeg_spa_humidity',
+  EXT_T:'sensor.tdeg_cabane_temperature', EXT_H:'sensor.tdeg_cabane_humidity',
+  POWER:'sensor.layzspa_power', ENERGY:'sensor.layzspa_energy',
+  FILTER:'sensor.layzspa_filter_age', FILTER_MAX:3, FILTER_RESET:'button.layzspa_reset_filter_change_timer',
+  CHLORE:'sensor.layzspa_chlorine_age', CHLORE_MAX:13, CHLORE_RESET:'button.layzspa_reset_chlorine_timer',
+  LEAK:'binary_sensor.innondation_spa_water_leak', TAMPER:'binary_sensor.innondation_spa_tamper',
+  FLOOD_BAT:'sensor.innondation_spa_battery',
+  CHEM:[
+    {l:'pH',  e:'sensor.water_quality_ph',                              min:6.4, max:7.6, dec:2, u:''},
+    {l:'ORP', e:'sensor.water_quality_oxidation_reduction_potential',   min:650, max:950, dec:0, u:' mV'},
+    {l:'TDS', e:'sensor.water_quality_total_dissolved_solids',          min:325, max:950, dec:0, u:' ppm'},
+    {l:'Sel', e:'sensor.water_quality_salinity',                        min:250, max:500, dec:0, u:' ppm'}
+  ],
+  SWITCHES:[
+    {e:'switch.spa',                 n:'Spa (disjoncteur)', i:'🛁'},
+    {e:'switch.layzspa_pump',        n:'Filtration',        i:'♻️'},
+    {e:'switch.layzspa_airbubbles',  n:'Bulles',            i:'🫧'},
+    {e:'light.led_spa',              n:'LED',               i:'✨'},
+    {e:'switch.tv_spa',              n:'Télévision',        i:'📺'},
+    {e:'switch.camera_spa',          n:'Caméra',            i:'📹'},
+    {e:'switch.aspirateur_spa',      n:'Aspirateur',        i:'🤖'},
+    {e:'switch.beem_spa',            n:'Beem (solaire)',    i:'☀️'},
+    {e:'switch.alexa_pop_spa',       n:'Alexa',             i:'🔉'},
+    {e:'switch.analyseur_d_eau_spa', n:'Analyseur d\u2019eau', i:'🧪'}
+  ],
+  SCHEDULE:'input_datetime.spa_pret_a',
+  VOLUME_L:500, HEAT_W:2000, KWH_PRICE:'sensor.tarif_actuel_base_9kva_ttc', KWH_FALLBACK:0.1927
+};
+
+const q=new URLSearchParams(location.search);
+const VIEW=(q.get('view')||'general').toLowerCase();
+const TITLES={general:'🛁 SPA — GÉNÉRAL', chimie:'🧪 SPA — CHIMIE', inter:'🔘 SPA — INTERRUPTEURS', prog:'⏰ SPA — PROGRAMMATION'};
+const gid=id=>document.getElementById(id);
+gid('ttl').textContent=TITLES[VIEW]||TITLES.general;
+document.title=TITLES[VIEW]||'Spa';
+
+const HA={}; let ws=null,msgId=1;
+const num=e=>{const s=HA[e];const v=s?parseFloat(s.state):NaN;return isNaN(v)?null:v;};
+const st=e=>HA[e]?HA[e].state:null;
+function toast(t){const e=gid('toast');e.textContent=t;e.style.display='block';
+  clearTimeout(e._h);e._h=setTimeout(()=>e.style.display='none',2500);}
+function call(domain,service,data){
+  if(!ws||ws.readyState!==1){toast('Non connecté');return;}
+  ws.send(JSON.stringify({id:msgId++,type:'call_service',domain,service,service_data:data}));
+}
+
+/* ═════════ VUES ═════════ */
+const B=gid('body');
+
+function buildGeneral(){
+  B.innerHTML=`
+  <div id="target">
+    <button class="tbtn" onclick="stepTarget(-0.5)">−</button>
+    <div style="text-align:center">
+      <div style="font-size:14px;color:var(--dim);font-weight:700">CONSIGNE</div>
+      <div class="tv"><span id="tg">--</span><small style="font-size:18px;color:var(--dim)"> °C</small></div>
+    </div>
+    <button class="tbtn" onclick="stepTarget(0.5)">+</button>
+  </div>
+  <div class="sect">◈ MESURES</div>
+  <div class="cards">
+    <div class="c"><div class="l">Air spa</div><div class="v" id="g-airt">--<small> °C</small></div></div>
+    <div class="c"><div class="l">Humidité spa</div><div class="v" id="g-airh">--<small> %</small></div></div>
+    <div class="c"><div class="l">Extérieur</div><div class="v" id="g-extt">--<small> °C</small></div></div>
+    <div class="c"><div class="l">Humidité ext.</div><div class="v" id="g-exth">--<small> %</small></div></div>
+    <div class="c"><div class="l">Puissance</div><div class="v" id="g-pw">--<small> W</small></div></div>
+    <div class="c"><div class="l">Énergie</div><div class="v" id="g-en">--<small> kWh</small></div></div>
+  </div>
+  <div class="sect">◈ ENTRETIEN</div>
+  <div class="brow">
+    <div class="hd"><span>Filtre</span><b><span id="g-fil">--</span> / ${CFG.FILTER_MAX} j</b></div>
+    <div class="bar"><div class="fill" id="g-filb"></div></div>
+    <button class="rbtn" onclick="resetTimer('${CFG.FILTER_RESET}','filtre')">⟳ Filtre changé</button>
+  </div>
+  <div class="brow">
+    <div class="hd"><span>Chlore</span><b><span id="g-chl">--</span> / ${CFG.CHLORE_MAX} j</b></div>
+    <div class="bar"><div class="fill" id="g-chlb"></div></div>
+    <button class="rbtn" onclick="resetTimer('${CFG.CHLORE_RESET}','chlore')">⟳ Chlore ajouté</button>
+  </div>
+  <div class="sect">◈ SÉCURITÉ</div>
+  <div class="cards">
+    <div class="c" id="g-leak"><div class="l">Fuite d'eau</div><div class="v">--</div></div>
+    <div class="c" id="g-tamp"><div class="l">Sabotage sonde</div><div class="v">--</div></div>
+    <div class="c"><div class="l">Batterie sonde</div><div class="v" id="g-bat">--<small> %</small></div></div>
+  </div>
+  <div class="sect">◈ CHIMIE (RÉSUMÉ)</div>
+  <div id="chem"></div>`;
+  buildChemRows();
+}
+function buildChimie(){
+  B.innerHTML=`<div class="sect">◈ ANALYSE DE L'EAU</div><div id="chem" style="display:flex;flex-direction:column;gap:14px"></div>`;
+  buildChemRows();
+}
+function buildChemRows(){
+  gid('chem').innerHTML=CFG.CHEM.map((c,i)=>`
+    <div class="brow">
+      <div class="hd"><span>${c.l}</span><b id="ch-${i}">--</b></div>
+      <div class="bar"><div class="fill" id="chb-${i}"></div></div>
+      <div style="display:flex;justify-content:space-between">
+        <span class="rng">plage : ${c.min}${c.u} – ${c.max}${c.u}</span>
+        <span class="stat" id="chs-${i}">–</span>
+      </div>
+    </div>`).join('');
+}
+function buildInter(){
+  B.innerHTML=`<div class="sect">◈ COMMANDES</div><div id="swgrid"></div>`;
+}
+function buildProg(){
+  B.innerHTML=`
+  <div id="prog">
+    <div class="prow"><span class="l">Eau actuelle</span><span class="v" id="p-cur">--.- °C</span></div>
+    <div class="prow"><span class="l">Consigne</span><span class="v" id="p-tgt">--.- °C</span></div>
+    <div class="prow"><span class="l">Montée estimée</span><span class="v" id="p-dur">--</span></div>
+    <div class="prow"><span class="l">Coût de chauffe estimé</span><span class="v" id="p-cost">--</span></div>
+    <div class="prow">
+      <span class="l">Spa prêt à</span>
+      <input type="time" id="p-time">
+      <button class="pbtn" onclick="saveReady()">💾 Enregistrer</button>
+    </div>
+    <div class="prow"><span class="l">Démarrer la chauffe vers</span><span class="v" id="p-start">--:--</span></div>
+  </div>
+  <div class="rng" style="color:var(--dim);font-size:14px;line-height:1.5">
+    Estimation : ${CFG.VOLUME_L} L × 1,163 Wh/°C/L à ${CFG.HEAT_W} W — hors pertes, par temps froid prévoir un peu plus.
+  </div>`;
+}
+
+/* ═════════ RENDU ═════════ */
+function setNum(id,e,dec,scale){
+  const el=gid(id); if(!el) return;
+  const v=num(e);
+  el.firstChild?el.firstChild.textContent='':null;
+  const small=el.querySelector('small');
+  el.innerHTML=(v==null?'--':(v*(scale||1)).toFixed(dec))+(small?small.outerHTML:'');
+}
+function chemRows(){
+  CFG.CHEM.forEach((c,i)=>{
+    const el=gid('ch-'+i); if(!el) return;
+    const v=num(c.e);
+    el.textContent=v==null?'--':v.toFixed(c.dec)+c.u;
+    const span=(c.max-c.min), lo=c.min-span*0.25, hi=c.max+span*0.25;
+    const p=v==null?0:Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+    const f=gid('chb-'+i), s=gid('chs-'+i);
+    let cls='ok',txt='DANS LA PLAGE',col='var(--ok)';
+    if(v==null){cls='';txt='–';col='var(--dim2)';}
+    else if(v<c.min){cls='bad';txt='TROP BAS';col='var(--bad)';}
+    else if(v>c.max){cls='bad';txt='TROP HAUT';col='var(--bad)';}
+    f.style.width=p+'%'; f.style.background=col;
+    s.className='stat '+cls; s.textContent=txt;
+  });
+}
+function ageRow(idV,idB,e,max){
+  const v=num(e), el=gid(idV); if(!el) return;
+  el.textContent=v==null?'--':v.toFixed(1);
+  const p=v==null?0:Math.max(0,Math.min(100,v/max*100));
+  const f=gid(idB);
+  f.style.width=p+'%';
+  f.style.background=p>=100?'var(--bad)':p>=75?'var(--warn)':'var(--accent)';
+}
+function binCard(id,e,alertTxt,okTxt){
+  const el=gid(id); if(!el) return;
+  const s=st(e);
+  const on=s==='on';
+  el.className='c '+(s==null?'':(on?'alert':'safe'));
+  el.querySelector('.v').textContent=s==null?'--':(on?alertTxt:okTxt);
+}
+function fmtMin(m){
+  if(m==null||m<0) return '--';
+  const h=Math.floor(m/60), mm=Math.round(m%60);
+  return h>0? h+' h '+String(mm).padStart(2,'0'):mm+' min';
+}
+function render(){
+  const wv=num(CFG.WATER);
+  gid('wt').innerHTML=(wv==null?'--.-':wv.toFixed(1))+'<small> °C eau</small>';
+
+  const cl=HA[CFG.CLIMATE];
+  const target=cl&&cl.attributes?parseFloat(cl.attributes.temperature):null;
+
+  if(VIEW==='general'){
+    const tg=gid('tg'); if(tg) tg.textContent=target==null?'--':target.toFixed(1);
+    setNum('g-airt',CFG.AIR_T,1); setNum('g-airh',CFG.AIR_H,0);
+    setNum('g-extt',CFG.EXT_T,1); setNum('g-exth',CFG.EXT_H,0);
+    setNum('g-pw',CFG.POWER,0); setNum('g-en',CFG.ENERGY,1);
+    ageRow('g-fil','g-filb',CFG.FILTER,CFG.FILTER_MAX);
+    ageRow('g-chl','g-chlb',CFG.CHLORE,CFG.CHLORE_MAX);
+    binCard('g-leak',CFG.LEAK,'⚠ FUITE !','R.A.S.');
+    binCard('g-tamp',CFG.TAMPER,'⚠ SABOTAGE','R.A.S.');
+    setNum('g-bat',CFG.FLOOD_BAT,0);
+    chemRows();
+  }
+  else if(VIEW==='chimie'){ chemRows(); }
+  else if(VIEW==='inter'){
+    gid('swgrid').innerHTML=CFG.SWITCHES.map((s,i)=>{
+      const v=st(s.e);
+      const unav=v==null||v==='unavailable'||v==='unknown';
+      const on=v==='on';
+      return `<div class="sw ${unav?'unav':(on?'on':'')}" ${unav?'':`onclick="swToggle(${i})"`}
+        role="button" tabindex="0" aria-label="${s.n}">
+        <div class="ic">${s.i}</div><div class="n">${s.n}</div>
+        <div class="s">${unav?'INDISPONIBLE':(on?'ALLUMÉ':'ÉTEINT')}</div></div>`;
+    }).join('');
+  }
+  else if(VIEW==='prog'){
+    const cur=wv, price=num(CFG.KWH_PRICE)||CFG.KWH_FALLBACK;
+    gid('p-cur').textContent=(cur==null?'--.-':cur.toFixed(1))+' °C';
+    gid('p-tgt').textContent=(target==null?'--.-':target.toFixed(1))+' °C';
+    let minutes=null;
+    if(cur!=null&&target!=null&&target>cur){
+      const wh=CFG.VOLUME_L*1.163*(target-cur);
+      minutes=wh/CFG.HEAT_W*60;
+      gid('p-cost').textContent=(wh/1000*price).toFixed(2)+' €';
+    } else if(cur!=null&&target!=null){
+      minutes=0; gid('p-cost').textContent='0.00 € (déjà à température)';
+    } else gid('p-cost').textContent='--';
+    gid('p-dur').textContent=minutes==null?'--':fmtMin(minutes);
+
+    const sch=st(CFG.SCHEDULE);
+    const inp=gid('p-time');
+    if(sch&&!inp.dataset.user){
+      const m=String(sch).match(/(\d{2}):(\d{2})/);
+      if(m) inp.value=m[1]+':'+m[2];
+    }
+    if(minutes!=null&&inp.value){
+      const [hh,mm]=inp.value.split(':').map(Number);
+      const ready=new Date(); ready.setHours(hh,mm,0,0);
+      if(ready<new Date()) ready.setDate(ready.getDate()+1);
+      const start=new Date(ready.getTime()-minutes*60000);
+      gid('p-start').textContent=String(start.getHours()).padStart(2,'0')+':'+String(start.getMinutes()).padStart(2,'0')
+        +(start.getDate()!==new Date().getDate()?' (demain)':'');
+    } else gid('p-start').textContent='--:--';
+  }
+}
+
+/* ── Actions ── */
+function stepTarget(d){
+  const cl=HA[CFG.CLIMATE];
+  const cur=cl&&cl.attributes?parseFloat(cl.attributes.temperature):null;
+  if(cur==null){toast('Consigne inconnue');return;}
+  const t=Math.max(CFG.T_MIN,Math.min(CFG.T_MAX,cur+d));
+  call('climate','set_temperature',{entity_id:CFG.CLIMATE,temperature:t});
+  toast('Consigne → '+t.toFixed(1)+' °C');
+}
+function swToggle(i){ call('homeassistant','toggle',{entity_id:CFG.SWITCHES[i].e}); }
+function resetTimer(e,label){
+  if(!confirm('Remettre le compteur '+label+' à zéro ?'))return;
+  call('button','press',{entity_id:e}); toast('Compteur '+label+' remis à zéro ✔');
+}
+function saveReady(){
+  const v=gid('p-time').value;
+  if(!v){toast('Choisis une heure');return;}
+  gid('p-time').dataset.user='1';
+  call('input_datetime','set_datetime',{entity_id:CFG.SCHEDULE,time:v+':00'});
+  toast('Heure enregistrée ✔');
+}
+document.addEventListener('input',e=>{ if(e.target.id==='p-time') e.target.dataset.user='1'; });
+
+/* ── WebSocket ── */
+function connectWS(){
+  ws=new WebSocket(CFG.HA_URL.replace('http','ws')+'/api/websocket');
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.type==='auth_required')ws.send(JSON.stringify({type:'auth',access_token:CFG.HA_TOKEN}));
+    else if(m.type==='auth_ok'){
+      ws.send(JSON.stringify({id:msgId++,type:'subscribe_events',event_type:'state_changed'}));
+      ws.send(JSON.stringify({id:msgId++,type:'get_states'}));
+    }
+    else if(m.type==='result'&&Array.isArray(m.result)){
+      m.result.forEach(s=>{HA[s.entity_id]=s;}); render();
+    }
+    else if(m.type==='event'&&m.event?.event_type==='state_changed'){
+      const s=m.event.data.new_state; if(s){HA[s.entity_id]=s; render();}
+    }
+  };
+  ws.onclose=()=>setTimeout(connectWS,5000);
+  ws.onerror=()=>ws.close();
+}
+
+({general:buildGeneral,chimie:buildChimie,inter:buildInter,prog:buildProg}[VIEW]||buildGeneral)();
+render(); connectWS();
+</script>
+</body>
+</html>
