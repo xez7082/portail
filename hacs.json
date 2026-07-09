@@ -1,1 +1,9 @@
-
+{
+  "name": "Portail Maison",
+  "content_in_root": false,
+  "filename": "portail.js",
+  "render_readme": true,
+  "domains": [],
+  "homeassistant": "2023.4.0",
+  "iot_class": "local_polling"
+}
