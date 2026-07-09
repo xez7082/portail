@@ -1,6 +1,21 @@
-// Chemins absolus garantis pour HACS (pas d'appels extérieurs bloqués par HA)
-import { LitElement, html, css } from '/hacsfiles/frontend/lit-element/lit-element.js';
-import { fireEvent } from '/hacsfiles/frontend/custom-card-helpers/custom-card-helpers.js';
+// ── Récupération de LitElement directement depuis le frontend HA déjà chargé ──
+// (aucun import réseau : évite tout 404 lié à /hacsfiles/frontend/... qui n'existe pas)
+const LitElement = Object.getPrototypeOf(
+  customElements.get('ha-panel-lovelace') || customElements.get('hui-view')
+);
+const { html, css } = LitElement.prototype;
+
+// Mini fireEvent local (évite l'import de custom-card-helpers, chemin invalide lui aussi)
+function fireEvent(node, type, detail = {}, options = {}) {
+  const event = new CustomEvent(type, {
+    bubbles: options.bubbles !== undefined ? options.bubbles : true,
+    cancelable: Boolean(options.cancelable),
+    composed: options.composed !== undefined ? options.composed : true,
+    detail,
+  });
+  node.dispatchEvent(event);
+  return event;
+}
 
 const DEFAULT_CONFIG = {
   titre_principal: "Portail Maison",
@@ -30,7 +45,7 @@ class PortailCard extends LitElement {
     main { flex: 1; display: flex; min-height: 0; }
     aside { width: 250px; background: var(--card-bg); border-right: 2px solid var(--divider-color); padding: 0.7rem; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
     .sub-btn { display: flex; align-items: center; gap: 0.7rem; text-align: left; font-size: 1.05rem; font-weight: 600; color: var(--primary-text-color); background: transparent; border: 2px solid transparent; border-radius: 10px; padding: 0.8rem; min-height: 60px; width: 100%; cursor: pointer; }
-    .sub-btn .ic { font-size: 1.5rem; width: 2rem; text-align: center; flex-shrink: 0; }
+    .sub-btn .ic { font-size: 1.5rem; width: 2rem; text-align: center; flex-shrink: 0; overflow: hidden; white-space: nowrap; }
     .sub-btn:hover { background: var(--secondary-background-color); }
     .sub-btn.active { background: var(--secondary-background-color); border-left: 6px solid var(--accent-color); border-radius: 0 10px 10px 0; color: var(--accent-color); }
     #content { flex: 1; position: relative; background: var(--primary-background-color); min-width: 0; }
@@ -45,7 +60,12 @@ class PortailCard extends LitElement {
   `; }
 
   setConfig(config) {
+    if (!config || !Array.isArray(config.menus)) {
+      throw new Error("portail-card : configuration invalide (menus manquant)");
+    }
     this._config = { ...DEFAULT_CONFIG, ...config };
+    this._activeMenu = 0;
+    this._activeSub = 0;
     this.style.fontSize = `${this._config.taille_texte || 17}px`;
     this.style.setProperty('--card-bg', this._config.couleur_cartes || '#27303f');
     this.style.setProperty('--primary-background-color', this._config.couleur_de_fond || '#1c2431');
@@ -54,26 +74,29 @@ class PortailCard extends LitElement {
 
   set hass(hass) { this._hass = hass; }
 
-  get currentMenu() { return this._config.menus[this._activeMenu] || this._config.menus[0] || null; }
+  getCardSize() { return 6; }
+
+  get currentMenu() { return (this._config.menus && this._config.menus[this._activeMenu]) || (this._config.menus && this._config.menus[0]) || null; }
   get currentSub() { const menu = this.currentMenu; return (menu && menu.sous_menus) ? (menu.sous_menus[this._activeSub] || menu.sous_menus[0] || null) : null; }
 
   render() {
+    if (!this._config) return html``;
     const sub = this.currentSub;
-    const iframeSrc = sub && sub.chemin ? `${sub.chemin}?v=${this._config.pages_version || 1}` : "";
+    const iframeSrc = sub && sub.chemin ? `${sub.chemin}${sub.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}` : "";
     return html`
       <header>
         <span class="brand">🏠</span>
         <nav>${this._config.menus.map((m, i) => html`<button class="menu-btn ${this._activeMenu === i ? 'active' : ''}" @click=${() => { this._activeMenu = i; this._activeSub = 0; }}>${m.nom}</button>`)}</nav>
         <div class="tools">
-          <button class="tool-btn" @click=${() => this._changeFont(-1)}>A−</button>
-          <button class="tool-btn" @click=${() => this._changeFont(1)}>A+</button>
-          <button class="tool-btn" @click=${() => this._openTab()}>⧉</button>
+          <button class="tool-btn" @click=${() => this._changeFont(-1)} aria-label="Réduire le texte">A−</button>
+          <button class="tool-btn" @click=${() => this._changeFont(1)} aria-label="Agrandir le texte">A+</button>
+          <button class="tool-btn" @click=${() => this._openTab()} aria-label="Ouvrir dans un nouvel onglet">⧉</button>
         </div>
       </header>
       <main>
         <aside>
-          ${this.currentMenu && this.currentMenu.sous_menus.length > 0 ? 
-            this.currentMenu.sous_menus.map((s, i) => html`<button class="sub-btn ${this._activeSub === i ? 'active' : ''}" style="color: ${s.couleur || 'var(--primary-text-color)'}; font-size: ${s.taille || 'inherit'}" @click=${() => { this._activeSub = i; }}><span class="ic">${s.icone || "📄"}</span><span>${s.nom}</span></button>`) : 
+          ${this.currentMenu && this.currentMenu.sous_menus && this.currentMenu.sous_menus.length > 0 ?
+            this.currentMenu.sous_menus.map((s, i) => html`<button class="sub-btn ${this._activeSub === i ? 'active' : ''}" style="color: ${s.couleur || 'var(--primary-text-color)'}; font-size: ${s.taille || 'inherit'}" @click=${() => { this._activeSub = i; }}><span class="ic">${s.icone || "📄"}</span><span>${s.nom}</span></button>`) :
             html`<div style="color: var(--secondary-text-color); padding: 1rem;">Aucun sous-menu</div>`}
         </aside>
         <div id="content">
@@ -83,9 +106,10 @@ class PortailCard extends LitElement {
   }
 
   _changeFont(d) { this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + d)); this.style.fontSize = `${this._config.taille_texte}px`; fireEvent(this, 'config-changed', { config: this._config }); }
-  _openTab() { const s = this.currentSub; if (s && s.chemin) window.open(`${s.chemin}?v=${this._config.pages_version || 1}`, "_blank"); }
-  
+  _openTab() { const s = this.currentSub; if (s && s.chemin) window.open(`${s.chemin}${s.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}`, "_blank"); }
+
   static getConfigElement() { return document.createElement("portail-editor"); }
+  static getStubConfig() { return DEFAULT_CONFIG; }
 }
 
 class PortailEditor extends LitElement {
@@ -113,18 +137,18 @@ class PortailEditor extends LitElement {
       <div class="editor-container">
         <h2>Configuration du Portail</h2>
         <div class="section">
-          <div class="row"><label>Titre principal</label><input type="text" .value=${c.titre_principal || ''} @input=${(e) => { c.titre_principal = e.target.value; }}></div>
-          <div class="row"><label>Taille texte (px)</label><input type="number" min="12" max="30" .value=${c.taille_texte || 17} @input=${(e) => { c.taille_texte = parseInt(e.target.value); }}></div>
-          <div class="row"><label>Couleur de fond</label><input type="color" .value=${c.couleur_de_fond || '#1c2431'} @input=${(e) => { c.couleur_de_fond = e.target.value; }}></div>
-          <div class="row"><label>Couleur des cartes</label><input type="color" .value=${c.couleur_cartes || '#27303f'} @input=${(e) => { c.couleur_cartes = e.target.value; }}></div>
-          <div class="row"><label>Couleur d'accent</label><input type="color" .value=${c.couleur_accent || '#3d8de0'} @input=${(e) => { c.couleur_accent = e.target.value; }}></div>
+          <div class="row"><label>Titre principal</label><input type="text" .value=${c.titre_principal || ''} @input=${(e) => { c.titre_principal = e.target.value; this._save(); }}></div>
+          <div class="row"><label>Taille texte (px)</label><input type="number" min="12" max="30" .value=${c.taille_texte || 17} @input=${(e) => { c.taille_texte = parseInt(e.target.value); this._save(); }}></div>
+          <div class="row"><label>Couleur de fond</label><input type="color" .value=${c.couleur_de_fond || '#1c2431'} @input=${(e) => { c.couleur_de_fond = e.target.value; this._save(); }}></div>
+          <div class="row"><label>Couleur des cartes</label><input type="color" .value=${c.couleur_cartes || '#27303f'} @input=${(e) => { c.couleur_cartes = e.target.value; this._save(); }}></div>
+          <div class="row"><label>Couleur d'accent</label><input type="color" .value=${c.couleur_accent || '#3d8de0'} @input=${(e) => { c.couleur_accent = e.target.value; this._save(); }}></div>
         </div>
         <h3>Menus et Sous-menus</h3>
         ${c.menus.map((m, mIdx) => html`
           <div class="section">
             <div class="row">
-              <label>Nom du menu</label><input type="text" .value=${m.nom || ''} @input=${(e) => { m.nom = e.target.value; }}>
-              <input type="color" style="max-width: 50px;" .value=${m.couleur || '#ffffff'} @input=${(e) => { m.couleur = e.target.value; }}>
+              <label>Nom du menu</label><input type="text" .value=${m.nom || ''} @input=${(e) => { m.nom = e.target.value; this._save(); }}>
+              <input type="color" style="max-width: 50px;" .value=${m.couleur || '#ffffff'} @input=${(e) => { m.couleur = e.target.value; this._save(); }}>
               <button class="mini-btn" @click=${() => this._moveMenu(mIdx, -1)}>▲</button>
               <button class="mini-btn" @click=${() => this._moveMenu(mIdx, 1)}>▼</button>
               <button class="mini-btn del" @click=${() => this._delMenu(mIdx)}>🗑</button>
@@ -132,16 +156,16 @@ class PortailEditor extends LitElement {
             <div class="sub-section">
               ${m.sous_menus.map((s, sIdx) => html`
                 <div class="row">
-                  <label>Icône</label><input type="text" style="max-width: 60px; text-align:center;" .value=${s.icone || ''} @input=${(e) => { s.icone = e.target.value; }} placeholder="⛅">
-                  <label>Nom</label><input type="text" .value=${s.nom || ''} @input=${(e) => { s.nom = e.target.value; }}>
+                  <label>Icône</label><input type="text" style="max-width: 60px; text-align:center;" .value=${s.icone || ''} @input=${(e) => { s.icone = e.target.value; this._save(); }} placeholder="⛅">
+                  <label>Nom</label><input type="text" .value=${s.nom || ''} @input=${(e) => { s.nom = e.target.value; this._save(); }}>
                   <button class="mini-btn del" @click=${() => this._delSub(mIdx, sIdx)}>✖</button>
                   <button class="mini-btn" @click=${() => this._moveSub(mIdx, sIdx, -1)}>▲</button>
                   <button class="mini-btn" @click=${() => this._moveSub(mIdx, sIdx, 1)}>▼</button>
                 </div>
-                <div class="row"><label>Chemin HTML</label><input type="text" .value=${s.chemin || ''} @input=${(e) => { s.chemin = e.target.value; }} placeholder="/local/portail/page.html"></div>
+                <div class="row"><label>Chemin HTML</label><input type="text" .value=${s.chemin || ''} @input=${(e) => { s.chemin = e.target.value; this._save(); }} placeholder="/local/portail/page.html"></div>
                 <div class="row">
-                  <label>Couleur texte</label><input type="color" style="max-width: 50px;" .value=${s.couleur || '#ffffff'} @input=${(e) => { s.couleur = e.target.value; }}>
-                  <label>Taille</label><input type="text" style="max-width: 60px;" .value=${s.taille || '16px'} @input=${(e) => { s.taille = e.target.value; }}>
+                  <label>Couleur texte</label><input type="color" style="max-width: 50px;" .value=${s.couleur || '#ffffff'} @input=${(e) => { s.couleur = e.target.value; this._save(); }}>
+                  <label>Taille</label><input type="text" style="max-width: 60px;" .value=${s.taille || '16px'} @input=${(e) => { s.taille = e.target.value; this._save(); }}>
                 </div>
                 <hr style="border:0; border-top:1px solid #ccc; margin: 8px 0;">
               `)}
@@ -153,14 +177,14 @@ class PortailEditor extends LitElement {
       </div>`;
   }
 
-  _addMenu() { this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] }); this.requestUpdate(); }
-  _delMenu(idx) { if(confirm("Supprimer ce menu ?")) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); } }
-  _moveMenu(idx, dir) { const arr = this._draftConfig.menus; const n = idx + dir; if (n < 0 || n >= arr.length) return; [arr[idx], arr[n]] = [arr[n], arr[idx]]; this.requestUpdate(); }
-  _addSub(mIdx) { this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); }
-  _delSub(mIdx, sIdx) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); }
-  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); }
+  _addMenu() { this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] }); this.requestUpdate(); this._save(); }
+  _delMenu(idx) { if(confirm("Supprimer ce menu ?")) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); this._save(); } }
+  _moveMenu(idx, dir) { const arr = this._draftConfig.menus; const n = idx + dir; if (n < 0 || n >= arr.length) return; [arr[idx], arr[n]] = [arr[n], arr[idx]]; this.requestUpdate(); this._save(); }
+  _addSub(mIdx) { this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); this._save(); }
+  _delSub(mIdx, sIdx) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); this._save(); }
+  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); this._save(); }
 
-  saveConfig() { fireEvent(this, 'config-changed', { config: this._draftConfig }); }
+  _save() { fireEvent(this, 'config-changed', { config: this._draftConfig }); }
 }
 
 customElements.define('portail-card', PortailCard);
