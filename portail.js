@@ -1,9 +1,13 @@
-// ── Attente robuste de LitElement ──
-// Les ressources chargées via HACS peuvent s'exécuter AVANT que Home
-// Assistant ait fini de définir ses propres éléments internes (ha-panel-
-// lovelace, hui-view, etc.), ce qui provoquait "css is not a function".
-// On patiente activement (sondage à chaque frame) au lieu d'abandonner
-// après un seul essai.
+// ── portail-card.js ──────────────────────────────────────────
+// Carte Lovelace "Portail" : menus + sous-menus, chacun pointant
+// vers une page HTML affichée en iframe. Éditeur visuel intégré.
+// Version simplifiée : pas de carte native imbriquée, uniquement
+// des pages HTML — pour une base stable et facile à maintenir.
+
+// Attente robuste de LitElement : patiente activement (sondage à
+// chaque frame) jusqu'à ce qu'un élément de référence HA existe,
+// car les ressources HACS peuvent s'exécuter avant que HA ait fini
+// de définir ses propres éléments internes.
 function waitForLitElementBase() {
   const candidates = ['home-assistant', 'home-assistant-main', 'hui-view', 'ha-panel-lovelace', 'hui-masonry-view', 'hc-lovelace'];
   return new Promise(resolve => {
@@ -17,6 +21,9 @@ function waitForLitElementBase() {
   });
 }
 
+waitForLitElementBase().then((LitElement) => {
+const { html, css } = LitElement.prototype;
+
 function fireEvent(node, type, detail = {}, options = {}) {
   const event = new CustomEvent(type, {
     bubbles: options.bubbles !== undefined ? options.bubbles : true,
@@ -28,9 +35,6 @@ function fireEvent(node, type, detail = {}, options = {}) {
   return event;
 }
 
-waitForLitElementBase().then((LitElement) => {
-const { html, css } = LitElement.prototype;
-
 const DEFAULT_CONFIG = {
   titre_principal: "Portail Maison",
   taille_texte: 17,
@@ -39,8 +43,12 @@ const DEFAULT_CONFIG = {
   couleur_accent: "#3d8de0",
   pages_version: 1,
   menus: [
-    { nom: "Météo", couleur: "#ffffff", sous_menus: [ { nom: "Météo", icone: "⛅", chemin: "/local/portail/meteo_ha_ws.html", couleur: "#ffffff", taille: "16px" } ] },
-    { nom: "Zones", couleur: "#ffffff", sous_menus: [ { nom: "Étage", icone: "🛏️", chemin: "/local/portail/etage.html", couleur: "#ffffff", taille: "16px" } ] }
+    { nom: "Météo", couleur: "#ffffff", sous_menus: [
+      { nom: "Météo", icone: "⛅", chemin: "/local/portail/meteo_ha_ws.html", couleur: "#ffffff", taille: "16px" }
+    ] },
+    { nom: "Zones", couleur: "#ffffff", sous_menus: [
+      { nom: "Étage", icone: "🛏️", chemin: "/local/portail/etage.html", couleur: "#ffffff", taille: "16px" }
+    ] }
   ]
 };
 
@@ -74,8 +82,11 @@ class PortailCard extends LitElement {
   `; }
 
   setConfig(config) {
+    // Ne jamais lever d'exception : setConfig() est appelée par HA en
+    // dehors du cycle de rendu protégé (aperçus du mode édition), donc
+    // toute exception ici peut remonter jusqu'au routeur de HA.
     if (!config || !Array.isArray(config.menus)) {
-      console.warn('[portail-card] configuration invalide ou incomplète, utilisation des valeurs par défaut.', config);
+      console.warn('[portail-card] configuration invalide, valeurs par défaut utilisées.', config);
       config = { ...DEFAULT_CONFIG };
     }
     this._config = { ...DEFAULT_CONFIG, ...config };
@@ -95,10 +106,7 @@ class PortailCard extends LitElement {
   set hass(hass) { this._hass = hass; }
 
   getCardSize() { return 6; }
-
-  getGridOptions() {
-    return { columns: 12, min_columns: 6, rows: 10, min_rows: 6, max_rows: 20 };
-  }
+  getGridOptions() { return { columns: 12, min_columns: 6, rows: 10, min_rows: 6, max_rows: 20 }; }
 
   get currentMenu() { return (this._config.menus && this._config.menus[this._activeMenu]) || (this._config.menus && this._config.menus[0]) || null; }
   get currentSub() { const menu = this.currentMenu; return (menu && menu.sous_menus) ? (menu.sous_menus[this._activeSub] || menu.sous_menus[0] || null) : null; }
@@ -135,42 +143,17 @@ class PortailCard extends LitElement {
             html`<div style="color: var(--secondary-text-color); padding: 1rem;">Aucun sous-menu</div>`}
         </aside>
         <div id="content">
-          ${sub && sub.carte ? this._renderNativeCard(sub)
-            : sub && sub.chemin ? html`<iframe src="${iframeSrc}"></iframe>`
-            : html`<div id="placeholder"><div class="big">${sub ? sub.nom : this._config.titre_principal}</div><div class="small">${sub ? "Chemin HTML ou carte manquant." : "Choisissez une rubrique."}</div></div>`}
+          ${sub && sub.chemin ? html`<iframe src="${iframeSrc}"></iframe>` : html`<div id="placeholder"><div class="big">${sub ? sub.nom : this._config.titre_principal}</div><div class="small">${sub ? "Chemin HTML manquant." : "Choisissez une rubrique."}</div></div>`}
         </div>
       </main>`;
-  }
-
-  _renderNativeCard(sub) {
-    const tag = String(sub.carte || '').trim().toLowerCase();
-    if (!tag || !customElements.get(tag)) {
-      return html`<div id="placeholder">
-        <div class="big">${sub.nom}</div>
-        <div class="small">${tag
-          ? `L'élément « ${tag} » n'est pas (encore) reconnu. Vérifie qu'il est bien déclaré dans Paramètres → Tableaux de bord → Ressources, et que le nom est complet.`
-          : 'Saisie de la carte native en cours…'}</div>
-      </div>`;
-    }
-    if (!this._cardCache) this._cardCache = {};
-    const key = sub.id || sub.nom;
-    let el = this._cardCache[key];
-    if (!el || el.tagName.toLowerCase() !== tag) {
-      el = document.createElement(tag);
-      try { el.setConfig(sub.carte_config || {}); } catch (e) {
-        console.error('portail-card: config invalide pour', tag, e);
-      }
-      this._cardCache[key] = el;
-    }
-    el.hass = this._hass;
-    el.style.width = '100%';
-    el.style.height = '100%';
-    return html`${el}`;
   }
 
   _changeFont(d) { this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + d)); this.style.fontSize = `${this._config.taille_texte}px`; fireEvent(this, 'config-changed', { config: this._config }); }
   _openTab() { const s = this.currentSub; if (s && s.chemin) window.open(`${s.chemin}${s.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}`, "_blank"); }
 
+  // Asynchrone : attend que "portail-editor" soit réellement enregistré
+  // avant de le renvoyer à HA, pour éviter qu'un élément vide (sans
+  // .setConfig()) ne soit utilisé trop tôt par le code interne de HA.
   static async getConfigElement() {
     if (!customElements.get('portail-editor')) {
       await customElements.whenDefined('portail-editor');
@@ -201,9 +184,6 @@ class PortailEditor extends LitElement {
       this._config = config || {};
       this._draftConfig = JSON.parse(JSON.stringify(config || { menus: [] }));
       if (!Array.isArray(this._draftConfig.menus)) this._draftConfig.menus = [];
-      this._draftConfig.menus.forEach(m => {
-        if (!Array.isArray(m.sous_menus)) m.sous_menus = [];
-      });
     } catch (e) {
       console.warn('[portail-editor] configuration invalide, repli sur un menu vide.', e);
       this._config = {};
@@ -256,7 +236,6 @@ class PortailEditor extends LitElement {
                   <button class="mini-btn" @click=${() => this._moveSub(mIdx, sIdx, 1)}>▼</button>
                 </div>
                 <div class="row"><label>Chemin HTML</label><input type="text" .value=${s.chemin || ''} @input=${(e) => { s.chemin = e.target.value; this._save(); }} placeholder="/local/portail/page.html"></div>
-                <div class="row"><label>Carte native</label><input type="text" .value=${s.carte || ''} @input=${(e) => { s.carte = e.target.value; this._save(); }} placeholder="ex: meteo-card (laisser vide pour utiliser le Chemin HTML)"></div>
                 <div class="row">
                   <label>Couleur texte</label><input type="color" style="max-width: 50px;" .value=${s.couleur || '#ffffff'} @input=${(e) => { s.couleur = e.target.value; this._save(); }}>
                   <label>Taille</label><input type="text" style="max-width: 60px;" .value=${s.taille || '16px'} @input=${(e) => { s.taille = e.target.value; this._save(); }}>
@@ -272,19 +251,21 @@ class PortailEditor extends LitElement {
   }
 
   _addMenu() { this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] }); this.requestUpdate(); this._save(); }
-  _delMenu(idx) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); this._save(); }
+  _delMenu(idx) { if(confirm("Supprimer ce menu ?")) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); this._save(); } }
   _moveMenu(idx, dir) { const arr = this._draftConfig.menus; const n = idx + dir; if (n < 0 || n >= arr.length) return; [arr[idx], arr[n]] = [arr[n], arr[idx]]; this.requestUpdate(); this._save(); }
-  _addSub(mIdx) { if (!Array.isArray(this._draftConfig.menus[mIdx].sous_menus)) { this._draftConfig.menus[mIdx].sous_menus = []; } this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); this._save(); }
-  _delSub(mIdx, sIdx) { if (this._draftConfig.menus[mIdx].sous_menus) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); this._save(); } }
-  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; if (!arr) return; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); this._save(); }
+  _addSub(mIdx) { if (!this._draftConfig.menus[mIdx].sous_menus) this._draftConfig.menus[mIdx].sous_menus = []; this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); this._save(); }
+  _delSub(mIdx, sIdx) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); this._save(); }
+  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); this._save(); }
 
   _save() { fireEvent(this, 'config-changed', { config: this._draftConfig }); }
 }
 
+// Enregistrement protégé : évite l'erreur "has already been used with this
+// registry" si la ressource est réimportée par HACS.
 if (!customElements.get('portail-card')) customElements.define('portail-card', PortailCard);
 if (!customElements.get('portail-editor')) customElements.define('portail-editor', PortailEditor);
 
 window.customCards = window.customCards || [];
-window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail web intégré avec menus dynamiques' });
+window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail web intégré avec menus dynamiques (pages HTML)' });
 
 });
