@@ -31,7 +31,6 @@ function fireEvent(node, type, detail = {}, options = {}) {
 waitForLitElementBase().then((LitElement) => {
 const { html, css } = LitElement.prototype;
 
-// Mini fireEvent local (évite l'import de custom-card-helpers, chemin invalide lui aussi)
 const DEFAULT_CONFIG = {
   titre_principal: "Portail Maison",
   taille_texte: 17,
@@ -75,12 +74,6 @@ class PortailCard extends LitElement {
   `; }
 
   setConfig(config) {
-    // Ne JAMAIS lever d'exception ici : setConfig() est appelée par HA en
-    // dehors du cycle de rendu (notamment lors des aperçus du mode édition
-    // du tableau de bord), donc un "throw" ici n'est protégé par AUCUN
-    // try/catch de render() et peut remonter jusqu'au routeur de HA,
-    // provoquant une fermeture brutale du dialogue. On se rabat toujours
-    // sur une config par défaut valide plutôt que d'échouer.
     if (!config || !Array.isArray(config.menus)) {
       console.warn('[portail-card] configuration invalide ou incomplète, utilisation des valeurs par défaut.', config);
       config = { ...DEFAULT_CONFIG };
@@ -103,10 +96,6 @@ class PortailCard extends LitElement {
 
   getCardSize() { return 6; }
 
-  /* Dashboards "Sections" : sans ceci, HA impose une hauteur par défaut
-     trop petite (souvent bien moins que 600px) qui ne s'adapte pas au
-     contenu. On demande une zone confortable, redimensionnable ensuite
-     librement en glissant le coin de la carte. */
   getGridOptions() {
     return { columns: 12, min_columns: 6, rows: 10, min_rows: 6, max_rows: 20 };
   }
@@ -114,8 +103,6 @@ class PortailCard extends LitElement {
   get currentMenu() { return (this._config.menus && this._config.menus[this._activeMenu]) || (this._config.menus && this._config.menus[0]) || null; }
   get currentSub() { const menu = this.currentMenu; return (menu && menu.sous_menus) ? (menu.sous_menus[this._activeSub] || menu.sous_menus[0] || null) : null; }
 
-  /* render() protégé de la même façon : une erreur ici ne doit jamais
-     faire fermer/planter tout Home Assistant, juste s'afficher proprement. */
   render() {
     try { return this._renderInner(); }
     catch (e) {
@@ -155,16 +142,7 @@ class PortailCard extends LitElement {
       </main>`;
   }
 
-  /* ── Carte native imbriquée (ex: sub.carte = "meteo-card") ──
-     sub.carte_config peut fournir des options supplémentaires
-     (ex: entités) fusionnées à la config de la carte imbriquée. */
   _renderNativeCard(sub) {
-    // On n'essaie de créer la carte native QUE si son nom correspond à un
-    // élément réellement enregistré. Sans ce garde-fou, chaque frappe au
-    // clavier dans le champ "Carte native" (ex: en tapant "meteo-card"
-    // lettre par lettre) déclenchait une tentative ratée à chaque lettre
-    // ("m", "me", "met"...) — sans danger grâce au try/catch, mais bruyant
-    // et inutile.
     const tag = String(sub.carte || '').trim().toLowerCase();
     if (!tag || !customElements.get(tag)) {
       return html`<div id="placeholder">
@@ -193,11 +171,6 @@ class PortailCard extends LitElement {
   _changeFont(d) { this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + d)); this.style.fontSize = `${this._config.taille_texte}px`; fireEvent(this, 'config-changed', { config: this._config }); }
   _openTab() { const s = this.currentSub; if (s && s.chemin) window.open(`${s.chemin}${s.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}`, "_blank"); }
 
-  // Asynchrone : attend que "portail-editor" soit réellement enregistré
-  // avant de le renvoyer à HA. Sans ça, si HA appelle cette méthode avant
-  // que l'enregistrement asynchrone (waitForLitElementBase) soit terminé,
-  // il reçoit un élément vide sans .setConfig() — et PLANTE en dehors de
-  // tout notre code protégé, provoquant une fermeture brutale du dialogue.
   static async getConfigElement() {
     if (!customElements.get('portail-editor')) {
       await customElements.whenDefined('portail-editor');
@@ -224,13 +197,13 @@ class PortailEditor extends LitElement {
   `; }
 
   setConfig(config) {
-    // Protection identique : JSON.parse(JSON.stringify(undefined)) lève une
-    // SyntaxError si HA appelle setConfig() sans config prête (arrive lors
-    // des aperçus du mode édition du tableau de bord).
     try {
       this._config = config || {};
       this._draftConfig = JSON.parse(JSON.stringify(config || { menus: [] }));
       if (!Array.isArray(this._draftConfig.menus)) this._draftConfig.menus = [];
+      this._draftConfig.menus.forEach(m => {
+        if (!Array.isArray(m.sous_menus)) m.sous_menus = [];
+      });
     } catch (e) {
       console.warn('[portail-editor] configuration invalide, repli sur un menu vide.', e);
       this._config = {};
@@ -238,9 +211,6 @@ class PortailEditor extends LitElement {
     }
   }
 
-  /* render() protégé : si une erreur survient pendant l'affichage de
-     l'éditeur, elle s'affiche proprement DANS la boîte de dialogue au
-     lieu de remonter et de faire fermer/planter tout Home Assistant. */
   render() {
     try { return this._renderInner(); }
     catch (e) {
@@ -277,7 +247,7 @@ class PortailEditor extends LitElement {
               <button class="mini-btn del" @click=${() => this._delMenu(mIdx)}>🗑</button>
             </div>
             <div class="sub-section">
-              ${m.sous_menus.map((s, sIdx) => html`
+              ${(m.sous_menus || []).map((s, sIdx) => html`
                 <div class="row">
                   <label>Icône</label><input type="text" style="max-width: 60px; text-align:center;" .value=${s.icone || ''} @input=${(e) => { s.icone = e.target.value; this._save(); }} placeholder="⛅">
                   <label>Nom</label><input type="text" .value=${s.nom || ''} @input=${(e) => { s.nom = e.target.value; this._save(); }}>
@@ -302,18 +272,15 @@ class PortailEditor extends LitElement {
   }
 
   _addMenu() { this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] }); this.requestUpdate(); this._save(); }
-  _delMenu(idx) { if(confirm("Supprimer ce menu ?")) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); this._save(); } }
+  _delMenu(idx) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); this._save(); }
   _moveMenu(idx, dir) { const arr = this._draftConfig.menus; const n = idx + dir; if (n < 0 || n >= arr.length) return; [arr[idx], arr[n]] = [arr[n], arr[idx]]; this.requestUpdate(); this._save(); }
-  _addSub(mIdx) { this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); this._save(); }
-  _delSub(mIdx, sIdx) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); this._save(); }
-  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); this._save(); }
+  _addSub(mIdx) { if (!Array.isArray(this._draftConfig.menus[mIdx].sous_menus)) { this._draftConfig.menus[mIdx].sous_menus = []; } this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); this._save(); }
+  _delSub(mIdx, sIdx) { if (this._draftConfig.menus[mIdx].sous_menus) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); this._save(); } }
+  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; if (!arr) return; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); this._save(); }
 
   _save() { fireEvent(this, 'config-changed', { config: this._draftConfig }); }
 }
 
-// Enregistrement protégé : évite l'erreur "has already been used with this
-// registry" si la ressource est réimportée (HACS recharge parfois le
-// script à l'ouverture de l'éditeur, ce qui faisait fermer tout le dialogue).
 if (!customElements.get('portail-card')) customElements.define('portail-card', PortailCard);
 if (!customElements.get('portail-editor')) customElements.define('portail-editor', PortailEditor);
 
