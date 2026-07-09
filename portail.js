@@ -1,24 +1,22 @@
-// ── Récupération de LitElement directement depuis le frontend HA déjà chargé ──
-// (aucun import réseau : évite tout 404 lié à /hacsfiles/frontend/... qui n'existe pas)
-// Récupération robuste de LitElement : plusieurs éléments de repli,
-// car "ha-panel-lovelace" n'est pas toujours déjà défini au moment
-// où cette ressource se charge (ce qui provoquait l'erreur
-// "Custom element doesn't exist").
-function getBaseElement() {
-  const candidates = ['hui-view', 'ha-panel-lovelace', 'home-assistant-main', 'hui-masonry-view'];
-  for (const tag of candidates) {
-    const el = customElements.get(tag);
-    if (el) return Object.getPrototypeOf(el);
-  }
-  return null;
+// ── Attente robuste de LitElement ──
+// Les ressources chargées via HACS peuvent s'exécuter AVANT que Home
+// Assistant ait fini de définir ses propres éléments internes (ha-panel-
+// lovelace, hui-view, etc.), ce qui provoquait "css is not a function".
+// On patiente activement (sondage à chaque frame) au lieu d'abandonner
+// après un seul essai.
+function waitForLitElementBase() {
+  const candidates = ['home-assistant', 'home-assistant-main', 'hui-view', 'ha-panel-lovelace', 'hui-masonry-view', 'hc-lovelace'];
+  return new Promise(resolve => {
+    (function check() {
+      for (const tag of candidates) {
+        const el = customElements.get(tag);
+        if (el) { resolve(Object.getPrototypeOf(el)); return; }
+      }
+      requestAnimationFrame(check);
+    })();
+  });
 }
-const LitElement = getBaseElement();
-if (!LitElement) {
-  console.error('[carte] Impossible de trouver LitElement : aucun élément HA de référence n\'est encore chargé. Vérifie que la ressource est bien déclarée dans Paramètres → Tableaux de bord → Ressources, avec le bon chemin.');
-}
-const { html, css } = LitElement ? LitElement.prototype : { html: null, css: null };
 
-// Mini fireEvent local (évite l'import de custom-card-helpers, chemin invalide lui aussi)
 function fireEvent(node, type, detail = {}, options = {}) {
   const event = new CustomEvent(type, {
     bubbles: options.bubbles !== undefined ? options.bubbles : true,
@@ -30,6 +28,10 @@ function fireEvent(node, type, detail = {}, options = {}) {
   return event;
 }
 
+waitForLitElementBase().then((LitElement) => {
+const { html, css } = LitElement.prototype;
+
+// Mini fireEvent local (évite l'import de custom-card-helpers, chemin invalide lui aussi)
 const DEFAULT_CONFIG = {
   titre_principal: "Portail Maison",
   taille_texte: 17,
@@ -228,3 +230,5 @@ customElements.define('portail-editor', PortailEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail web intégré avec menus dynamiques' });
+
+});
