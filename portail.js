@@ -75,16 +75,28 @@ class PortailCard extends LitElement {
   `; }
 
   setConfig(config) {
+    // Ne JAMAIS lever d'exception ici : setConfig() est appelée par HA en
+    // dehors du cycle de rendu (notamment lors des aperçus du mode édition
+    // du tableau de bord), donc un "throw" ici n'est protégé par AUCUN
+    // try/catch de render() et peut remonter jusqu'au routeur de HA,
+    // provoquant une fermeture brutale du dialogue. On se rabat toujours
+    // sur une config par défaut valide plutôt que d'échouer.
     if (!config || !Array.isArray(config.menus)) {
-      throw new Error("portail-card : configuration invalide (menus manquant)");
+      console.warn('[portail-card] configuration invalide ou incomplète, utilisation des valeurs par défaut.', config);
+      config = { ...DEFAULT_CONFIG };
     }
     this._config = { ...DEFAULT_CONFIG, ...config };
+    if (!Array.isArray(this._config.menus) || !this._config.menus.length) {
+      this._config.menus = DEFAULT_CONFIG.menus;
+    }
     this._activeMenu = 0;
     this._activeSub = 0;
-    this.style.fontSize = `${this._config.taille_texte || 17}px`;
-    this.style.setProperty('--card-bg', this._config.couleur_cartes || '#27303f');
-    this.style.setProperty('--primary-background-color', this._config.couleur_de_fond || '#1c2431');
-    this.style.setProperty('--accent-color', this._config.couleur_accent || '#3d8de0');
+    try {
+      this.style.fontSize = `${this._config.taille_texte || 17}px`;
+      this.style.setProperty('--card-bg', this._config.couleur_cartes || '#27303f');
+      this.style.setProperty('--primary-background-color', this._config.couleur_de_fond || '#1c2431');
+      this.style.setProperty('--accent-color', this._config.couleur_accent || '#3d8de0');
+    } catch (e) { console.warn('[portail-card] style non appliqué :', e); }
   }
 
   set hass(hass) { this._hass = hass; }
@@ -186,7 +198,20 @@ class PortailEditor extends LitElement {
     .sub-section { margin-left: 1rem; padding-left: 1rem; border-left: 3px solid var(--divider-color, #ccc); margin-top: 0.5rem; }
   `; }
 
-  setConfig(config) { this._config = config; this._draftConfig = JSON.parse(JSON.stringify(config)); }
+  setConfig(config) {
+    // Protection identique : JSON.parse(JSON.stringify(undefined)) lève une
+    // SyntaxError si HA appelle setConfig() sans config prête (arrive lors
+    // des aperçus du mode édition du tableau de bord).
+    try {
+      this._config = config || {};
+      this._draftConfig = JSON.parse(JSON.stringify(config || { menus: [] }));
+      if (!Array.isArray(this._draftConfig.menus)) this._draftConfig.menus = [];
+    } catch (e) {
+      console.warn('[portail-editor] configuration invalide, repli sur un menu vide.', e);
+      this._config = {};
+      this._draftConfig = { menus: [] };
+    }
+  }
 
   /* render() protégé : si une erreur survient pendant l'affichage de
      l'éditeur, elle s'affiche proprement DANS la boîte de dialogue au
