@@ -102,7 +102,20 @@ class PortailCard extends LitElement {
   get currentMenu() { return (this._config.menus && this._config.menus[this._activeMenu]) || (this._config.menus && this._config.menus[0]) || null; }
   get currentSub() { const menu = this.currentMenu; return (menu && menu.sous_menus) ? (menu.sous_menus[this._activeSub] || menu.sous_menus[0] || null) : null; }
 
+  /* render() protégé de la même façon : une erreur ici ne doit jamais
+     faire fermer/planter tout Home Assistant, juste s'afficher proprement. */
   render() {
+    try { return this._renderInner(); }
+    catch (e) {
+      console.error('[portail-card] erreur de rendu :', e);
+      return html`<div style="padding:1.2rem;color:#c62828;background:#ffebee;border-radius:8px;font-size:1rem;">
+        <b>⚠ Erreur dans le portail</b><br>${e && e.message ? e.message : String(e)}<br>
+        <small>Détail complet dans la console (F12).</small>
+      </div>`;
+    }
+  }
+
+  _renderInner() {
     if (!this._config) return html``;
     const sub = this.currentSub;
     const iframeSrc = sub && sub.chemin ? `${sub.chemin}${sub.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}` : "";
@@ -175,7 +188,22 @@ class PortailEditor extends LitElement {
 
   setConfig(config) { this._config = config; this._draftConfig = JSON.parse(JSON.stringify(config)); }
 
+  /* render() protégé : si une erreur survient pendant l'affichage de
+     l'éditeur, elle s'affiche proprement DANS la boîte de dialogue au
+     lieu de remonter et de faire fermer/planter tout Home Assistant. */
   render() {
+    try { return this._renderInner(); }
+    catch (e) {
+      console.error('[portail-editor] erreur de rendu :', e);
+      return html`<div style="padding:1rem;color:#c62828;background:#ffebee;border-radius:8px;">
+        <b>⚠ Erreur dans l'éditeur du portail</b><br>
+        ${e && e.message ? e.message : String(e)}<br>
+        <small>Détail complet dans la console (F12).</small>
+      </div>`;
+    }
+  }
+
+  _renderInner() {
     if (!this._draftConfig) return html``;
     const c = this._draftConfig;
     return html`
