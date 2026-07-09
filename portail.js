@@ -159,13 +159,28 @@ class PortailCard extends LitElement {
      sub.carte_config peut fournir des options supplémentaires
      (ex: entités) fusionnées à la config de la carte imbriquée. */
   _renderNativeCard(sub) {
+    // On n'essaie de créer la carte native QUE si son nom correspond à un
+    // élément réellement enregistré. Sans ce garde-fou, chaque frappe au
+    // clavier dans le champ "Carte native" (ex: en tapant "meteo-card"
+    // lettre par lettre) déclenchait une tentative ratée à chaque lettre
+    // ("m", "me", "met"...) — sans danger grâce au try/catch, mais bruyant
+    // et inutile.
+    const tag = String(sub.carte || '').trim().toLowerCase();
+    if (!tag || !customElements.get(tag)) {
+      return html`<div id="placeholder">
+        <div class="big">${sub.nom}</div>
+        <div class="small">${tag
+          ? `L'élément « ${tag} » n'est pas (encore) reconnu. Vérifie qu'il est bien déclaré dans Paramètres → Tableaux de bord → Ressources, et que le nom est complet.`
+          : 'Saisie de la carte native en cours…'}</div>
+      </div>`;
+    }
     if (!this._cardCache) this._cardCache = {};
     const key = sub.id || sub.nom;
     let el = this._cardCache[key];
-    if (!el || el.tagName.toLowerCase() !== String(sub.carte).toLowerCase()) {
-      el = document.createElement(sub.carte);
+    if (!el || el.tagName.toLowerCase() !== tag) {
+      el = document.createElement(tag);
       try { el.setConfig(sub.carte_config || {}); } catch (e) {
-        console.error('portail-card: config invalide pour', sub.carte, e);
+        console.error('portail-card: config invalide pour', tag, e);
       }
       this._cardCache[key] = el;
     }
