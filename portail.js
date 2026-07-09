@@ -100,9 +100,31 @@ class PortailCard extends LitElement {
             html`<div style="color: var(--secondary-text-color); padding: 1rem;">Aucun sous-menu</div>`}
         </aside>
         <div id="content">
-          ${sub && sub.chemin ? html`<iframe src="${iframeSrc}"></iframe>` : html`<div id="placeholder"><div class="big">${sub ? sub.nom : this._config.titre_principal}</div><div class="small">${sub ? "Chemin HTML manquant." : "Choisissez une rubrique."}</div></div>`}
+          ${sub && sub.carte ? this._renderNativeCard(sub)
+            : sub && sub.chemin ? html`<iframe src="${iframeSrc}"></iframe>`
+            : html`<div id="placeholder"><div class="big">${sub ? sub.nom : this._config.titre_principal}</div><div class="small">${sub ? "Chemin HTML ou carte manquant." : "Choisissez une rubrique."}</div></div>`}
         </div>
       </main>`;
+  }
+
+  /* ── Carte native imbriquée (ex: sub.carte = "meteo-card") ──
+     sub.carte_config peut fournir des options supplémentaires
+     (ex: entités) fusionnées à la config de la carte imbriquée. */
+  _renderNativeCard(sub) {
+    if (!this._cardCache) this._cardCache = {};
+    const key = sub.id || sub.nom;
+    let el = this._cardCache[key];
+    if (!el || el.tagName.toLowerCase() !== String(sub.carte).toLowerCase()) {
+      el = document.createElement(sub.carte);
+      try { el.setConfig(sub.carte_config || {}); } catch (e) {
+        console.error('portail-card: config invalide pour', sub.carte, e);
+      }
+      this._cardCache[key] = el;
+    }
+    el.hass = this._hass;
+    el.style.width = '100%';
+    el.style.height = '100%';
+    return html`${el}`;
   }
 
   _changeFont(d) { this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + d)); this.style.fontSize = `${this._config.taille_texte}px`; fireEvent(this, 'config-changed', { config: this._config }); }
@@ -163,6 +185,7 @@ class PortailEditor extends LitElement {
                   <button class="mini-btn" @click=${() => this._moveSub(mIdx, sIdx, 1)}>▼</button>
                 </div>
                 <div class="row"><label>Chemin HTML</label><input type="text" .value=${s.chemin || ''} @input=${(e) => { s.chemin = e.target.value; this._save(); }} placeholder="/local/portail/page.html"></div>
+                <div class="row"><label>Carte native</label><input type="text" .value=${s.carte || ''} @input=${(e) => { s.carte = e.target.value; this._save(); }} placeholder="ex: meteo-card (laisser vide pour utiliser le Chemin HTML)"></div>
                 <div class="row">
                   <label>Couleur texte</label><input type="color" style="max-width: 50px;" .value=${s.couleur || '#ffffff'} @input=${(e) => { s.couleur = e.target.value; this._save(); }}>
                   <label>Taille</label><input type="text" style="max-width: 60px;" .value=${s.taille || '16px'} @input=${(e) => { s.taille = e.target.value; this._save(); }}>
