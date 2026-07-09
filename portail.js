@@ -13,7 +13,6 @@ litScript.textContent = `
       };
     }
 
-    // Le CSS est EN DUR ici, il reproduit un beau tableau de bord météo
     static get styles() {
       return css\`
         :host {
@@ -64,43 +63,35 @@ litScript.textContent = `
         .sub-btn:hover { background: var(--secondary-background-color, #31435c); }
         .sub-btn.active { background: var(--secondary-background-color, #31435c); border-left: 5px solid var(--accent-color, #3d8de0); color: var(--accent-color, #a8d1ff); }
 
-        /* --- ZONE DE CONTENU (LE HTML EN DUR) --- */
+        /* --- ZONE DE CONTENU (IFRAME POUR TES FICHIERS COMPLEXES) --- */
         #content { 
-          flex: 1; padding: 1rem; overflow-y: auto; 
-          display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;
-          align-content: start;
+          flex: 1; position: relative; overflow: hidden;
         }
-        
-        .weather-card {
-          background: var(--card-background-color, #27303f); 
-          border-radius: 12px; padding: 1.2rem;
-          border: 1px solid var(--divider-color, #3c4a5e);
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          text-align: center;
+        iframe {
+          width: 100%; height: 100%; border: none; background: #1c2431;
         }
-        .weather-card.large { grid-column: span 2; flex-direction: row; gap: 1.5rem; text-align: left; }
-        .w-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-        .large .w-icon { font-size: 4rem; margin-bottom: 0; }
-        .w-label { font-size: 0.85rem; color: var(--secondary-text-color, #aebdd0); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 1px; }
-        .w-value { font-size: 2rem; font-weight: 700; }
-        .w-unit { font-size: 1rem; font-weight: 400; color: var(--secondary-text-color, #aebdd0); }
-        .empty { color: var(--secondary-text-color, #aebdd0); grid-column: 1 / -1; text-align: center; margin-top: 3rem; }
+        .placeholder {
+          position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+          color: var(--secondary-text-color, #aebdd0); font-style: italic;
+        }
       \`;
     }
 
     setConfig(config) {
-      // LA CONFIGURATION EN DUR PAR DÉFAUT (MÉTÉO)
+      // Configuration par défaut avec tes vrais fichiers
       const defaultConfig = {
         menus: [
           {
             nom: "Météo",
             sous_menus: [
-              { id: "temp_ext", nom: "Température Ext.", icone: "🌡️", sensor: "sensor.temperature_exterieure", couleur: "#ff8a80", type: "large" },
-              { id: "humidite", nom: "Humidité", icone: "💧", sensor: "sensor.humidite_exterieure", couleur: "#82b1ff", type: "normal" },
-              { id: "vent", nom: "Vitesse du vent", icone: "💨", sensor: "sensor.vitesse_vent", couleur: "#b9f6ca", type: "normal" },
-              { id: "pression", nom: "Pression", icone: "🔵", sensor: "sensor.pression_atmospherique", couleur: "#ffff8d", type: "normal" },
-              { id: "uv", nom: "Indice UV", icone: "☀️", sensor: "sensor.uv", couleur: "#ffcc80", type: "normal" },
-              { id: "nebulosite", nom: "Nébulosité", icone: "☁️", sensor: "sensor.nebulosite", couleur: "#e0e0e0", type: "normal" }
+              { nom: "Météo HA WS", icone: "🌤️", chemin: "/local/portail/meteo_ha_ws.html", couleur: "#82b1ff" },
+              { nom: "Météo Alsace", icone: "🗺️", chemin: "/local/portail/meteo_alsace.html", couleur: "#b9f6ca" }
+            ]
+          },
+          {
+            nom: "Zones",
+            sous_menus: [
+              { nom: "Étage", icone: "🛏️", chemin: "/local/portail/etage.html", couleur: "#ffcc80" }
             ]
           }
         ]
@@ -110,20 +101,15 @@ litScript.textContent = `
 
     set hass(hass) {
       this._hass = hass;
-      if (this._activeMenu !== undefined) this.requestUpdate();
     }
 
     get currentMenu() { return this._config.menus[this._activeMenu] || this._config.menus[0] || null; }
     get currentSubs() { return this.currentMenu ? this.currentMenu.sous_menus : []; }
 
-    _getSensorState(sensorId) {
-      if (!this._hass || !sensorId) return { state: '---', unit: '' };
-      const entity = this._hass.states[sensorId];
-      if (!entity) return { state: 'N/A', unit: '' };
-      return { state: entity.state, unit: entity.attributes.unit_of_measurement || '' };
-    }
-
     render() {
+      const sub = this.currentSubs[this._activeSub];
+      const src = sub && sub.chemin ? sub.chemin : "";
+
       return html\`
         <header>
           <span class="brand">🏠</span>
@@ -149,41 +135,17 @@ litScript.textContent = `
           </aside>
 
           <div id="content">
-            \${this._renderContent()}
+            \${src ? html\`<iframe src="\${src}"></iframe>\` : html\`<div class="placeholder">Sélectionnez un élément</div>\`}
           </div>
         </main>
       \`;
-    }
-
-    // LE RENDU HTML EN DUR
-    _renderContent() {
-      const sub = this.currentSubs[this._activeSub];
-      if (!sub) return html\`<div class="empty">Sélectionnez un élément à gauche</div>\`;
-
-      if (sub.sensor) {
-        const data = this._getSensorState(sub.sensor);
-        const isLarge = sub.type === 'large';
-        
-        return html\`
-          <div class="weather-card \${isLarge ? 'large' : ''}">
-            <div class="w-icon">\${sub.icone || '📊'}</div>
-            <div>
-              <div class="w-label">\${sub.nom}</div>
-              <div class="w-value" style="color: \${sub.couleur || 'inherit'}">
-                \${data.state}<span class="w-unit">\${data.unit}</span>
-              </div>
-            </div>
-          </div>
-        \`;
-      }
-      return html\`<div class="empty">Aucun sensor configuré.</div>\`;
     }
 
     static getConfigElement() { return document.createElement("portail-editor"); }
   }
 
   // ======================================================================
-  // L'ÉDITEUR VISUEL QUI PERMET DE CHOISIR LES SENSORS ET D'ENREGISTRER
+  // ÉDITEUR VISUEL 
   // ======================================================================
   class PortailEditor extends LitElement {
     static get properties() {
@@ -215,7 +177,6 @@ litScript.textContent = `
 
     setConfig(config) {
       this._config = config;
-      // On fait une copie profonde pour pouvoir annuler si besoin
       this._draft = JSON.parse(JSON.stringify(config));
     }
 
@@ -225,14 +186,18 @@ litScript.textContent = `
       if (!this._draft) return html\`\`;
       return html\`
         <div class="container">
-          <h3>Configuration des Menus et Sensors</h3>
+          <h3>Gestion des menus et pages</h3>
+          <p style="font-size: 0.9rem; color: var(--secondary-text-color); margin: 0;">
+            Ici, tu peux gérer les liens vers tes fichiers HTML complexes (comme le Canvas Météo). 
+            La configuration spécifique des sensors de la météo se fait directement dans le fichier HTML en cliquant sur "⚙️ Config" dedans.
+          </p>
           
           \${this._draft.menus.map((m, mIdx) => html\`
             <div class="menu-block">
               <div class="row">
                 <label>Nom Menu</label>
                 <input type="text" .value=\${m.nom} @input=\${(e) => { m.nom = e.target.value; this.requestUpdate(); }}>
-                <button class="btn btn-sm btn-danger" @click=\${() => { this._draft.menus.splice(mIdx, 1); this.requestUpdate(); }}>Suppr Menu</button>
+                <button class="btn btn-sm btn-danger" @click=\${() => { this._draft.menus.splice(mIdx, 1); this.requestUpdate(); }}>X</button>
               </div>
 
               <div class="sub-area">
@@ -246,28 +211,20 @@ litScript.textContent = `
                       <button class="btn btn-sm btn-danger" @click=\${() => { m.sous_menus.splice(sIdx, 1); this.requestUpdate(); }}>X</button>
                     </div>
                     <div class="row">
-                      <label>Sensor HA</label>
-                      <!-- Le vrai composant de recherche de Home Assistant -->
-                      <ha-entity-picker 
-                        .hass=\${this._hass} 
-                        .value=\${s.sensor} 
-                        @value-changed=\${(e) => { s.sensor = e.detail.value; this.requestUpdate(); }}
-                        allow-custom-entity
-                      ></ha-entity-picker>
+                      <label>Chemin HTML</label>
+                      <input type="text" .value=\${s.chemin || ''} @input=\${(e) => { s.chemin = e.target.value; }} placeholder="/local/portail/mon_fichier.html">
                     </div>
                     <div class="row">
                       <label>Couleur</label>
                       <input type="color" style="max-width: 50px;" .value=\${s.couleur || '#ffffff'} @input=\${(e) => { s.couleur = e.target.value; }}>
-                      <label>Grande carte</label>
-                      <input type="checkbox" ?checked=\${s.type === 'large'} @change=\${(e) => { s.type = e.target.checked ? 'large' : 'normal'; this.requestUpdate(); }}>
                     </div>
                   </div>
                 \`)}
                 <button class="btn btn-ghost" @click=\${() => { 
-                  m.sous_menus.push({id: Date.now(), nom: "Nouveau Sensor", icone: "📊", sensor: "", couleur: "#ffffff", type: "normal"}); 
+                  m.sous_menus.push({nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff"}); 
                   this.requestUpdate(); 
                 }}>
-                  + Ajouter un sensor
+                  + Ajouter une page
                 </button>
               </div>
             </div>
@@ -283,7 +240,6 @@ litScript.textContent = `
       \`;
     }
 
-    // FONCTION MAGIQUE QUI PERMET DE CLIQUER SUR ENREGISTRER
     saveConfig() {
       this.dispatchEvent(new CustomEvent('config-changed', { 
         detail: { config: this._draft }, 
@@ -297,6 +253,6 @@ litScript.textContent = `
   customElements.define('portail-editor', PortailEditor);
 
   window.customCards = window.customCards || [];
-  window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail tout en dur avec éditeur de sensors' });
+  window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail intégré avec iframe pour fichiers complexes' });
 `;
 document.head.appendChild(litScript);
