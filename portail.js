@@ -233,8 +233,11 @@ class PortailEditor extends LitElement {
   _save() { fireEvent(this, 'config-changed', { config: this._draftConfig }); }
 }
 
-customElements.define('portail-card', PortailCard);
-customElements.define('portail-editor', PortailEditor);
+// Enregistrement protégé : évite l'erreur "has already been used with this
+// registry" si la ressource est réimportée (HACS recharge parfois le
+// script à l'ouverture de l'éditeur, ce qui faisait fermer tout le dialogue).
+if (!customElements.get('portail-card')) customElements.define('portail-card', PortailCard);
+if (!customElements.get('portail-editor')) customElements.define('portail-editor', PortailEditor);
 
 window.customCards = window.customCards || [];
 window.customCards.push({ type: 'portail-card', name: 'Portail Maison', description: 'Portail web intégré avec menus dynamiques' });
