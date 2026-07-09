@@ -1,5 +1,6 @@
-import { LitElement, html, css } from 'https://unpkg.com/lit-element@3.3.3/lit-element.js?module';
-import { fireEvent } from 'https://unpkg.com/custom-card-helpers@1.10.0/dist/custom-card-helpers.js?module';
+// On utilise les bibliothèques de HACS déjà présentes sur ton serveur local
+import { LitElement, html, css } from '/custom_components/hacs/frontend/lib/lit-element/lit-element.js';
+import { fireEvent } from '/custom_components/hacs/frontend/lib/custom-card-helpers/custom-card-helpers.js';
 
 // ======================================================================
 // STRUCTURE DE CONFIGURATION PAR DÉFAUT
@@ -25,7 +26,6 @@ const DEFAULT_CONFIG = {
         { nom: "Étage", icone: "🛏️", chemin: "/local/portail/etage.html", couleur: "#ffffff", taille: "16px" }
       ]
     }
-    // (Tu pourras ajouter tous tes autres menus via l'éditeur visuel de HA)
   ]
 };
 
@@ -81,11 +81,8 @@ class PortailCard extends LitElement {
   }
 
   setConfig(config) {
-    // Fusionne la config YAML avec les valeurs par défaut
     this._config = { ...DEFAULT_CONFIG, ...config };
-    // Applique la taille de texte globale
     this.style.fontSize = `${this._config.taille_texte || 17}px`;
-    // Applique les couleurs personnalisées
     this.style.setProperty('--card-bg', this._config.couleur_cartes || '#27303f');
     this.style.setProperty('--primary-background-color', this._config.couleur_de_fond || '#1c2431');
     this.style.setProperty('--accent-color', this._config.couleur_accent || '#3d8de0');
@@ -156,7 +153,6 @@ class PortailCard extends LitElement {
   _changeFont(delta) {
     this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + delta));
     this.style.fontSize = `${this._config.taille_texte}px`;
-    // Sauvegarde dans HA en émettant un événement (optionnel, mais recommandé)
     fireEvent(this, 'config-changed', { config: this._config });
   }
 
@@ -165,14 +161,13 @@ class PortailCard extends LitElement {
     if (sub && sub.chemin) window.open(`${sub.chemin}?v=${this._config.pages_version || 1}`, "_blank");
   }
 
-  // Indique à HA quel éditeur utiliser
   static getConfigElement() {
     return document.createElement("portail-editor");
   }
 }
 
 // ======================================================================
-// L'ÉDITEUR VISUEL (Pour la modale de configuration de HA)
+// L'ÉDITEUR VISUEL
 // ======================================================================
 class PortailEditor extends LitElement {
   static get properties() {
@@ -190,7 +185,7 @@ class PortailEditor extends LitElement {
       .section { border: 1px solid var(--divider-color, #ccc); border-radius: 8px; padding: 1rem; background: var(--secondary-background-color, #f4f4f4); }
       .row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
       label { min-width: 120px; font-weight: bold; font-size: 0.9rem; }
-      input, ha-icon-picker { flex: 1; min-width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+      input { flex: 1; min-width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
       .mini-btn { background: #eee; border: 1px solid #ccc; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 1.1rem; }
       .mini-btn.del { color: red; }
       .mini-btn.del:hover { background: #ffcccc; }
@@ -201,7 +196,6 @@ class PortailEditor extends LitElement {
 
   setConfig(config) {
     this._config = config;
-    // On fait une copie profonde pour travailler sans modifier l'original jusqu'au "Sauvegarder"
     this._draftConfig = JSON.parse(JSON.stringify(config));
   }
 
@@ -281,58 +275,27 @@ class PortailEditor extends LitElement {
     `;
   }
 
-  // --- Fonctions de manipulation de l'éditeur ---
-  _addMenu() {
-    this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] });
-    this.requestUpdate();
-  }
-  _delMenu(idx) {
-    if(confirm("Supprimer ce menu et tous ses sous-menus ?")) {
-      this._draftConfig.menus.splice(idx, 1);
-      this.requestUpdate();
-    }
-  }
-  _moveMenu(idx, dir) {
-    const arr = this._draftConfig.menus;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= arr.length) return;
-    [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-    this.requestUpdate();
-  }
-  _addSub(mIdx) {
-    this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" });
-    this.requestUpdate();
-  }
-  _delSub(mIdx, sIdx) {
-    this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1);
-    this.requestUpdate();
-  }
-  _moveSub(mIdx, sIdx, dir) {
-    const arr = this._draftConfig.menus[mIdx].sous_menus;
-    const newIdx = sIdx + dir;
-    if (newIdx < 0 || newIdx >= arr.length) return;
-    [arr[sIdx], arr[newIdx]] = [arr[newIdx], arr[sIdx]];
-    this.requestUpdate();
-  }
+  _addMenu() { this._draftConfig.menus.push({ nom: "Nouveau Menu", couleur: "#ffffff", sous_menus: [] }); this.requestUpdate(); }
+  _delMenu(idx) { if(confirm("Supprimer ce menu ?")) { this._draftConfig.menus.splice(idx, 1); this.requestUpdate(); } }
+  _moveMenu(idx, dir) { const arr = this._draftConfig.menus; const n = idx + dir; if (n < 0 || n >= arr.length) return; [arr[idx], arr[n]] = [arr[n], arr[idx]]; this.requestUpdate(); }
+  _addSub(mIdx) { this._draftConfig.menus[mIdx].sous_menus.push({ nom: "Nouvelle Page", icone: "📄", chemin: "/local/", couleur: "#ffffff", taille: "16px" }); this.requestUpdate(); }
+  _delSub(mIdx, sIdx) { this._draftConfig.menus[mIdx].sous_menus.splice(sIdx, 1); this.requestUpdate(); }
+  _moveSub(mIdx, sIdx, dir) { const arr = this._draftConfig.menus[mIdx].sous_menus; const n = sIdx + dir; if (n < 0 || n >= arr.length) return; [arr[sIdx], arr[n]] = [arr[n], arr[sIdx]]; this.requestUpdate(); }
 
-  // --- Sauvegarde dans le YAML de la carte ---
   saveConfig() {
     fireEvent(this, 'config-changed', { config: this._draftConfig });
   }
 }
 
 // ======================================================================
-// ENREGISTREMENT DES ÉLÉMENTS
+// ENREGISTREMENT
 // ======================================================================
 customElements.define('portail-card', PortailCard);
 customElements.define('portail-editor', PortailEditor);
 
-// Ajout dans la liste des fenêtres pour que HA le reconnaisse
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'portail-card',
   name: 'Portail Maison',
   description: 'Portail web intégré avec menus dynamiques et iframe'
 });
-
-console.info("%c PORTAIL MAISON %c Chargé avec succès ", "color: white; background: #3d8de0; font-weight: bold; border-radius: 3px 0 0 3px;", "color: white; background: #1c2431; border-radius: 0 3px 3px 0;");
