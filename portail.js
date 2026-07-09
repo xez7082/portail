@@ -1,4 +1,4 @@
-// Chemins absolus garantis pour HACS
+// Chemins absolus garantis pour HACS (pas d'appels extérieurs bloqués par HA)
 import { LitElement, html, css } from '/hacsfiles/frontend/lit-element/lit-element.js';
 import { fireEvent } from '/hacsfiles/frontend/custom-card-helpers/custom-card-helpers.js';
 
