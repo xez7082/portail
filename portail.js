@@ -91,6 +91,14 @@ class PortailCard extends LitElement {
 
   getCardSize() { return 6; }
 
+  /* Dashboards "Sections" : sans ceci, HA impose une hauteur par défaut
+     trop petite (souvent bien moins que 600px) qui ne s'adapte pas au
+     contenu. On demande une zone confortable, redimensionnable ensuite
+     librement en glissant le coin de la carte. */
+  getGridOptions() {
+    return { columns: 12, min_columns: 6, rows: 10, min_rows: 6, max_rows: 20 };
+  }
+
   get currentMenu() { return (this._config.menus && this._config.menus[this._activeMenu]) || (this._config.menus && this._config.menus[0]) || null; }
   get currentSub() { const menu = this.currentMenu; return (menu && menu.sous_menus) ? (menu.sous_menus[this._activeSub] || menu.sous_menus[0] || null) : null; }
 
