@@ -193,7 +193,17 @@ class PortailCard extends LitElement {
   _changeFont(d) { this._config.taille_texte = Math.min(24, Math.max(14, (this._config.taille_texte || 17) + d)); this.style.fontSize = `${this._config.taille_texte}px`; fireEvent(this, 'config-changed', { config: this._config }); }
   _openTab() { const s = this.currentSub; if (s && s.chemin) window.open(`${s.chemin}${s.chemin.includes('?') ? '&' : '?'}v=${this._config.pages_version || 1}`, "_blank"); }
 
-  static getConfigElement() { return document.createElement("portail-editor"); }
+  // Asynchrone : attend que "portail-editor" soit réellement enregistré
+  // avant de le renvoyer à HA. Sans ça, si HA appelle cette méthode avant
+  // que l'enregistrement asynchrone (waitForLitElementBase) soit terminé,
+  // il reçoit un élément vide sans .setConfig() — et PLANTE en dehors de
+  // tout notre code protégé, provoquant une fermeture brutale du dialogue.
+  static async getConfigElement() {
+    if (!customElements.get('portail-editor')) {
+      await customElements.whenDefined('portail-editor');
+    }
+    return document.createElement("portail-editor");
+  }
   static getStubConfig() { return DEFAULT_CONFIG; }
 }
 
